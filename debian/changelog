@@ -1,0 +1,2505 @@
+chrony (4.1-4) unstable; urgency=medium
+
+  * debian/:
+    - Remove empty preinst maintainer script.
+
+  * debian/chrony.lintian-overrides:
+    - Remove unused overrides.
+
+  * debian/control:
+    - Bump Standards-Version to 4.6.0 (no changes needed).
+
+  * debian/patches/*:
+    - Add fix-seccomp-filter-for-BINDTODEVICE-socket-option.patch.
+    (Closes: #995207)
+
+  * debian/usr.sbin.chronyd:
+    - Add 'vim:syntax=apparmor' modline.
+    - Add feature ABI rule. Starting with AppArmor 3.0, policy needs to contain
+    an abi rule to indicate which feature abi the policy was developed under.
+
+ -- Vincent Blut <vincent.debian@free.fr>  Thu, 07 Oct 2021 15:23:28 +0200
+
+chrony (4.1-3) unstable; urgency=medium
+
+  * Upload to unstable.
+
+  * debian/patches/:
+    - Add allow-clone3-and-pread64-in-seccomp-filter.patch.
+
+  * debian/tests/upstream-simulation-test-suite:
+    - Update clknetsim version.
+
+ -- Vincent Blut <vincent.debian@free.fr>  Sun, 15 Aug 2021 15:08:56 +0200
+
+chrony (4.1-2) experimental; urgency=medium
+
+  * Merge branch 'debian/unstable' into 'debian/latest'.
+
+  * debian/rules:
+    - Remove needless dh_auto_test override.
+
+  [ Christian Ehrhardt ]
+  * debian/tests/helper-functions:
+    - Improve chronyd restart logic. While rendering the tests more readable,
+    this also fixes ntp-server-and-nts-auth test on Ubuntu.
+
+  [ Debian Janitor ]
+  * debian/{control,chrony.maintscript}:
+    - Remove constraints unnecessary since stretch.
+
+ -- Vincent Blut <vincent.debian@free.fr>  Sat, 26 Jun 2021 17:16:45 +0200
+
+chrony (4.1-1) experimental; urgency=medium
+
+  * Import upstream version 4.1:
+    - Please see /usr/share/doc/chrony/NEWS.gz for the release notes.
+
+  * debian/copyright:
+    - Update copyright years.
+
+  * debian/upstream/signing-key.asc:
+    - Update Miroslav Lichvar's key.
+
+  * debian/watch:
+    - Add upstream version mangle to transform -pre to ~pre.
+
+ -- Vincent Blut <vincent.debian@free.fr>  Fri, 14 May 2021 00:25:34 +0200
+
+chrony (4.1~pre1-1) experimental; urgency=medium
+
+  * Import upstream version 4.1-pre1:
+    - Please see /usr/share/doc/chrony/NEWS.gz for the release notes.
+
+  * debian/control:
+    - Now that the upstream system tests support 'ss', replace the net-tools
+    build-dependency by iproute2.
+
+  * debian/NEWS:
+    - Mention that lines in *.sources files must be terminated by a trailing
+    newline.
+
+  * debian/patches/:
+    - Drop allow-IP_TOS-socket-option-in-seccomp-filter.patch. Applied
+    upstream.
+
+  * debian/postinst:
+    - Do not redirect 'chronyd -p' stderr to /dev/null. Not needed anymore.
+
+  * debian/sources.d/README:
+    - Mention that lines in *.sources files must be terminated by a trailing
+    newline.
+
+  * debian/tests/dynamically-add-source:
+    - Terminate the line in dummy-server.sources with the newline control
+    character.
+
+  * debian/tests/fragmented-configuration:
+    - Do not redirect 'chronyd -p' stderr to /dev/null. Not needed anymore.
+
+  * debian/tests/upstream-simulation-test-suite:
+    - Update clknetsim version.
+
+ -- Vincent Blut <vincent.debian@free.fr>  Mon, 10 May 2021 18:56:53 +0200
+
+chrony (4.0-8) unstable; urgency=medium
+
+  * debian/patches/:
+    - Add allow-BINDTODEVICE-option-in-seccomp-filter.patch to enable support
+    for binding sockets to a device without having to disable the seccomp
+    filter.
+    - Add allow-getuid32-in-seccomp-filter.patch. Upstream found out that
+    getuid32() needed to be allowed in the seccomp filter to enable some NTS
+    operations on i686. This may affect other 32-bits architectures.
+
+ -- Vincent Blut <vincent.debian@free.fr>  Thu, 13 May 2021 16:51:41 +0200
+
+chrony (4.0-7) unstable; urgency=medium
+
+  * debian/patches/:
+    - Add allow-IP_TOS-socket-option-in-seccomp-filter.patch to enable the use
+    of the 'dscp' directive.
+
+ -- Vincent Blut <vincent.debian@free.fr>  Thu, 08 Apr 2021 16:21:16 +0200
+
+chrony (4.0-6) unstable; urgency=medium
+
+  * debian/tests/helper-functions:
+    - Instead of running 'systemctl restart chrony.service', use
+    __restart_chronyd() in the __no_system_clock_control() function.
+    - Run 'sleep 3' only if chronyd has successfully restarted.
+
+  [ Christian Ehrhardt ]
+  * debian/tests/{dynamically-add-source,ntp-server-and-nts-auth}:
+    - Reduce default Ubuntu config to make space for testcase config.
+
+  * debian/tests/helper-functions:
+    - Add more common functions and update some tests to use them.
+    - Wait after restarting chronyd. Without this, some tests break on Ubuntu by
+    checking state too early.
+
+ -- Vincent Blut <vincent.debian@free.fr>  Sun, 21 Feb 2021 21:59:22 +0100
+
+chrony (4.0-5) unstable; urgency=medium
+
+  * Follow DEP-14 branch naming conventions:
+    master -> debian/latest
+    upstream -> upstream/latest
+
+  * debian/chrony.service:
+    - Enable some hardening settings.
+
+  * debian/control:
+    - Remove Joachim Wiedorn from the Uploaders field. This decision was taken
+    in agreement with him. Thanks a lot, Joachim, for your work on chrony and
+    for your benevolence when you handed me its maintenance.
+    - Point Vcs-Git to the debian/latest branch.
+
+  * debian/dirs:
+    - Do not create the /etc/apparmor.d/force-complain directory. Not needed
+    anymore.
+
+  * debian/postrm:
+    - Remove /run/chrony-dhcp on purge.
+
+  * debian/preinst:
+    - Drop old migration code snippet. It was used to put the newly provided
+    AppArmor profile in complain mode when upgrading chrony to prevent
+    regressions this profile could have caused. (Closes: #905485)
+
+ -- Vincent Blut <vincent.debian@free.fr>  Thu, 04 Feb 2021 19:49:22 +0100
+
+chrony (4.0-4) unstable; urgency=medium
+
+  * debian/chrony.examples:
+    - Provide example configuration files.
+
+  * debian/postinst:
+    - Run adduser unconditionally.
+    - Use 'chronyd -p' to check the whole configuration.
+
+  * debian/tests/:
+    - Prevent dynamically-add-source and ntp-server-and-nts-auth tests from
+    failing on chronyd's preparation step.
+    - Don't pass 'set -u' to dynamically-add-source and
+    ntp-server-and-nts-auth scripts.
+
+  * debian/tests/control:
+    - Mark dynamically-add-source as skippable.
+
+ -- Vincent Blut <vincent.debian@free.fr>  Thu, 21 Jan 2021 20:02:39 +0100
+
+chrony (4.0-3) unstable; urgency=medium
+
+  * debian/:
+    - chronyd's configuration can now be fragmented. Please see
+    /etc/chrony/conf.d/README for more information.
+    - NTP sources can be specified in /etc/chrony/sources.d. Please see
+    /etc/chrony/sources.d/README for more information.
+
+  * debian/chrony.conf:
+    - Include configuration files found in /etc/chrony/conf.d.
+    - Use NTP sources found in /etc/chrony/sources.d.
+    - Get TAI-UTC offset and leap seconds from the system tz database by using
+    the "leapsectz right/UTC" directive. This directive must be commented out
+    when using time sources serving leap-smeared time. (Closes: #974845)
+    - Add missing comment.
+
+  * debian/chrony.default:
+    - Switch the seccomp filter to level 1.
+
+  * debian/chrony.lintian-overrides:
+    - Override breakout-link.
+
+  * debian/control:
+    - Add tzdata to the dependencies.
+    - Bump Standards-Version to 4.5.1 (no changes required).
+
+  * debian/copyright:
+    - Update copyright year for debian/*.
+
+  * debian/postinst:
+    - Use dpkg-statoverride to manage mode bits and ownership of
+    /var/l{ib,og}/chrony.
+
+  * debian/postrm:
+    - Remove overrides for /var/l{ib,og}/chrony on purge.
+
+  * debian/rules:
+    - Drop '--without-readline' option. GNU readline support has been dropped
+    upstream due to license incompatibility.
+    - Replace -F -1 by -F 1 in the sed invocation.
+
+  * debian/tests/:
+    - Add fragmented-configuration autopkgtest.
+    - Add dynamically-add-source autopkgtest.
+    - Add ntp-server-and-nts-auth autopkgtest.
+
+  * debian/tests/control:
+    - Mark ntp-server-and-nts-auth as skippable.
+
+  * debian/tests/fragmented-configuration:
+    - Use another directive for the test since "leapsectz right/UTC" is now
+    used by default.
+
+  * debian/tests/helper-functions:
+    - Add __no_system_clock_control() function.
+
+  * debian/tests/upstream-simulation-test-suite:
+    - Always use the same seed to get deterministic results.
+
+  * debian/upstream/metadata:
+    - Remove obsolete field Name. Thanks to Debian Janitor <janitor@jelmer.uk>.
+
+  * debian/usr.sbin.chronyd:
+    - Make use of the @{run} variable.
+
+ -- Vincent Blut <vincent.debian@free.fr>  Mon, 18 Jan 2021 21:58:52 +0100
+
+chrony (4.0-2) unstable; urgency=medium
+
+  * Merge branch 'experimental' into 'master'.
+
+  * Upload to unstable.
+
+ -- Vincent Blut <vincent.debian@free.fr>  Tue, 13 Oct 2020 15:59:33 +0200
+
+chrony (4.0-1) experimental; urgency=medium
+
+  * Import upstream version 4.0:
+    - This release adds support for the Network Time Security (NTS)
+    authentication mechanism (RFC 8915).
+    - Please see /usr/share/doc/chrony/NEWS.gz for the release notes.
+
+ -- Vincent Blut <vincent.debian@free.fr>  Wed, 07 Oct 2020 19:14:51 +0200
+
+chrony (4.0~pre4-2) experimental; urgency=medium
+
+  * debian/postinst:
+    - Fix user and group ownership of "/var/lib/chrony" to allow chronyd
+    to write in it. This will also fix a regression in the 104-systemdirs
+    test.
+
+ -- Vincent Blut <vincent.debian@free.fr>  Sat, 03 Oct 2020 11:20:02 +0200
+
+chrony (4.0~pre4-1) experimental; urgency=medium
+
+  * Import upstream version 4.0-pre4:
+    - Please see /usr/share/doc/chrony/NEWS.gz for the release notes.
+
+  * Merge branch 'master' into experimental. (Closes: #970421)
+
+  * debian/chrony.conf:
+    - Use NTP sources from /run/chrony-dhcp.
+    - Save NTS keys and cookies in /var/lib/chrony/.
+
+  * debian/chrony-dnssrv@.service:
+    - Update "chrony-helper" path.
+
+  * debian/chrony.dhcp:
+    - Save NTP servers from DHCP to /run/chrony-dhcp/$interface.sources.
+
+  * debian/chrony.lintian-overrides:
+    - Override executable-in-usr-lib for NetworkManager dispatcher scripts.
+    - Update NetworkManager dispatcher script name.
+
+  * debian/chrony.ppp.ip-{down,up}:
+    - Update PID file path.
+
+  * debian/chrony.service:
+    - Update PID file path.
+    - Do not run 'chrony-helper update-daemon' after starting chronyd. Not
+    needed anymore.
+
+  * debian/control:
+    - Build-depend on libgnutls28-dev to support NTS.
+    - Build-depend on gnutls-bin for the test suite.
+    - Bump debhelper-compat to 13.
+
+  * debian/copyright:
+    - Update copyright years.
+
+  * debian/dirs:
+    - Remove var/log/chrony as it will be created automatically if it doesn’t
+    exist.
+
+  * debian/if-{post-down,up}:
+    - Update PID file path.
+
+  * debian/init:
+    - Update PID file path.
+    - Drop the unnecessary '--remove pidfile' option from the stop target.
+    - Do not run 'chrony-helper update-daemon' after starting chronyd. Not
+    needed anymore.
+
+  * debian/install:
+    - Move "chrony-helper" to "/usr/libexec/chrony".
+
+  * debian/links:
+    - Update source and destination filenames.
+
+  * debian/patches/:
+    - Drop patches applied upstream.
+    - Add nm-dispatcher-dhcp_Move-server_dir-to-run.patch.
+
+  * debian/postinst:
+    - Drop migration code from pre-Stretch.
+    - Migrate NTP sources obtained from DHCP to /run/chrony-dhcp on upgrade
+    from chrony < 4.0~pre4-1.
+    - Remove staled PID file when upgrading from chrony < 4.0~pre4-1.
+
+  * debian/rules:
+    - Change the default PID file location from /run to /run/chrony.
+    - Drop dh_missing --fail-missing. This is the default in debhelper 13.
+    - Enable seccomp support by default on riscv64.
+    - Update NetworkManager dispatcher script name from 20-chrony to
+    20-chrony-onoffline.
+    - Add DHCP NetworkManager dispatcher script to allow chronyd to use
+    NTP sources obtained from NM's internal DHCP client.
+
+  * debian/tests/:
+    - Add some helper functions. Some tests will be updated thereafter
+    to use them.
+
+  * debian/tests/time-sources-from-dhcp-servers:
+    - Adapt to the new way of using time sources from DHCP.
+    - Improve sed invocation.
+
+  * debian/tests/upstream-simulation-test-suite:
+    - Update clknetsim version.
+    - Cosmetic changes.
+
+  * debian/tests/upstream-system-tests:
+    - No need to stop systemd-timesyncd anymore since it is no more
+    co-installable with chrony anymore.
+
+  * debian/usr.sbin.chronyd:
+    - Update PID file path.
+    - Add dac_override and dac_read_search capabilities to give "root" the
+    ability to write the PID file in /run/chrony/.
+    - Prefix flag definition by "flags=".
+    - Sort the capabilities.
+    - Grant CAP_NET_RAW capability to allow an NTP socket to be bound to a
+    device using the SO_BINDTODEVICE socket option on kernels before 5.7.
+    - Add comments regarding capabilities.
+    - Let chronyd create /var/l{ib,og}/chrony.
+    - Remove a superfluous rule.
+    - Allow reading of NTP sources in /run/chrony-dhcp/.
+
+  * debian/watch:
+    - Make use of special strings.
+
+ -- Vincent Blut <vincent.debian@free.fr>  Fri, 02 Oct 2020 21:21:08 +0200
+
+chrony (3.5.1-1) unstable; urgency=medium
+
+  * Import upstream version 3.5.1:
+    - Please see /usr/share/doc/chrony/NEWS.gz for the release notes.
+    - CVE-2020-14367: create new file when writing pidfile.
+
+  * debian/chrony.lintian-overrides:
+    - Remove unused override.
+
+  [ Ville Skyttä ]
+  * debian/chrony.conf:
+    - Comment spelling fix. (MR: !5)
+
+ -- Vincent Blut <vincent.debian@free.fr>  Thu, 20 Aug 2020 14:07:22 +0200
+
+chrony (3.5-9) unstable; urgency=medium
+
+  * debian/patches/:
+    - Add allow-some-*time64-syscalls-in-seccomp-filter.patch. Needed for
+    32-bit architectures with new system calls using 64-bit time_t.
+    (LP: #1878005)
+
+  * debian/tests/control:
+    - Add needs-internet restriction to the upstream-simulation-test-suite
+    test.
+
+  [ Christian Ehrhardt ]
+  * debian/tests/upstream-simulation-test-suite:
+    - Skip if preparation steps fail.
+    - Make preparation steps more verbose.
+
+ -- Vincent Blut <vincent.debian@free.fr>  Tue, 19 May 2020 16:42:18 +0200
+
+chrony (3.5-8) unstable; urgency=medium
+
+  * debian/postrm:
+    - Stop starting systemd-timesyncd in postrm. This is no longer relevant
+    since systemd-timesyncd is a standalone package declaring
+    Conflicts/Replaces/Provides: time-daemon. (Closes: #955773)
+
+  [ Christian Ehrhardt ]
+  * debian/tests/upstream-system-tests:
+    - Stop chrony/systemd-timesynd before running these tests. (LP: #1870144)
+
+ -- Vincent Blut <vincent.debian@free.fr>  Sun, 05 Apr 2020 17:44:31 +0200
+
+chrony (3.5-7) unstable; urgency=medium
+
+  * debian/chrony.maintscript:
+    - Remove the /etc/NetworkManager/dispatcher.d/20-chrony conffile.
+
+  * debian/control:
+    - Support seccomp facility on riscv64. It should be noted that the system
+    call filter will stay disabled by default on this architecture until
+    Linux >= 5.5 hits unstable.
+    - Bump libseccomp-dev build-dep to 2.4.3-1~ to provide seccomp facility on
+    riscv64.
+    - Break network-manager (<< 1.20.0-1~). Prior to this version,
+    NetworkManager would not look for dispatcher scripts into
+    /usr/lib/NetworkManager/dispatcher.d/.
+
+  * debian/dirs:
+    - Create the usr/lib/NetworkManager/dispatcher.d subdirectories.
+
+  * debian/links:
+    - Change the location of the NetworkManager dispatcher script.
+
+  * debian/patches/:
+    - Add allow-renameat2-in-seccomp-filter.patch. Required as the riscv64
+    architecture does not support the rename() and renameat() system calls.
+
+  * debian/rules:
+    - Move the NetworkManager dispatcher script in
+     /usr/lib/NetworkManager/dispatcher.d/.
+
+ -- Vincent Blut <vincent.debian@free.fr>  Tue, 17 Mar 2020 15:21:53 +0100
+
+chrony (3.5-6) unstable; urgency=medium
+
+  * debian/chrony.service:
+    - Don’t conflict with systemd-timesyncd.service.
+    A few users complain that chronyd does not start at boot. The way the
+    Conflict= directive works internally might cause both systemd-timesyncd
+    and chronyd to be inactive at boot. So by relying solely on the
+    disable-with-time-daemon.conf drop-in file provided by systemd, we should
+    get rid of this malfunction while still preventing these two time daemons
+    from being active at the same time. Kudos notably go to Santiago Vila for
+    the report and providing SSH access to a GCE instance where the issue was
+    reproducible and Michael Biebl for debugging. (Closes: #947936)
+
+  * debian/control:
+    - Bump Standards-Version to 4.5.0 (no changes required).
+    - No need to explicitly conflict with ntp as it now provides time-daemon.
+
+  * debian/copyright:
+    - Update copyright year for debian/*.
+
+  * debian/patches/:
+    - Add allow-clock_adjtime-in-seccomp-filter.patch.
+    glibc 2.31 switched the adjtimex() function to the clock_adjtime
+    system call.
+
+  * debian/tests/upstream-simulation-test-suite:
+    - Update clknetsim version. This new version supports glibc >= 2.31 headers.
+    (LP: #1866753)
+
+  * debian/tests/control:
+    - Run the upstream-simulation-test-suite as root.
+
+ -- Vincent Blut <vincent.debian@free.fr>  Tue, 10 Mar 2020 19:17:16 +0100
+
+chrony (3.5-5) unstable; urgency=medium
+
+  * debian/control:
+    - Bump standard-version to 4.4.1 (no change required).
+
+  * debian/install:
+    - Install 50-chrony.list in /usr/lib/systemd/ntp-units.d.
+
+  * debian/ntp-units.d/50-chrony.list:
+    - Allow timedated to interact with chronyd.
+
+  * debian/patches/*:
+    - Cherry-pick upstream commits to better manage RTCs that don't support
+    interrupts. This fixes an issue exhibited when a specific upstream system
+    test is run on the Ubuntu CI. Thank to Christian Ehrhardt for working
+    with Miroslav Lichvar to address this problem.
+
+  * debian/tests/control:
+    - Use @builddeps@ as a test dependency for upstream_system_tests.
+
+  [ Christian Ehrhardt ]
+  * debian/tests/upstream-simulation-test-suite:
+    - Redirect stderr on make call to stdout. On some architectures (e.g. armhf)
+    the clksim tests compile but throw some warnings. (MR: !2)
+
+ -- Vincent Blut <vincent.debian@free.fr>  Sun, 22 Dec 2019 17:30:40 +0100
+
+chrony (3.5-4) unstable; urgency=medium
+
+  * debian/tests/control:
+    - Add @builddeps@ to the list of dependencies needed by the
+    upstream-simulation-test-suite test.
+
+ -- Vincent Blut <vincent.debian@free.fr>  Fri, 30 Aug 2019 00:49:20 +0200
+
+chrony (3.5-3) unstable; urgency=medium
+
+  * debian/chrony.lintian-overrides:
+    - Override package-supports-alternative-init-but-no-init.d-script. This
+    is a false positive. chrony-dnssrv@.service isn’t a daemon but a oneshot
+    service, not started at boot, whose role is to lookup for _ntp._udp DNS SRV
+    records.
+
+  * debian/chrony.service:
+    - Pull in time-sync.target and order chrony before it as recommended in
+    systemd.special(7).
+
+  * debian/control:
+    - Bump standard-version to 4.4.0 (no changes required).
+
+  * debian/.gitlab-ci.yml:
+    - Switch to standard Salsa Pipeline.
+    - Skip the reprotest job for as long as it is run as root due to problems
+    with chrony system tests.
+
+  * debian/tests/*:
+    - Revamp the upstream-simulation-test-suite test.
+    - Adjust dpkg dependencies for upstream-simulation-test-suite.
+    - Adjust restrictions for upstream-simulation-test-suite.
+    - Introduce upstream-system-tests. Add a new set of tests for testing
+    basic chronyd functionality. Destructive tests are run in a virtual
+    machine.
+    - Add ethtool to the list of dependencies needed by
+    run_destructive_system_tests.
+    - exit 77 if upstream-simulation-test-suite is run on non-Linux and mark
+    the test as skippable. Thanks to Paul Gevers <elbrus@debian.org> for the
+    suggestion.
+    - Make artifacts() exit 1. Again, thanks to Paul Gevers.
+
+ -- Vincent Blut <vincent.debian@free.fr>  Tue, 13 Aug 2019 17:57:47 +0200
+
+chrony (3.5-2) unstable; urgency=medium
+
+  * Merge branch “experimental” into “master”.
+
+  * debian/chrony.dhcp:
+    - Fix shellcheck warnings. Patch imported from Fedora.
+
+  * debian/chrony-helper:
+    - Fix shellcheck warnings. Patch imported from Fedora.
+
+  * debian/clean:
+    - Drop obsolete entries.
+
+  * debian/copyright:
+    - Update copyright years.
+    - Update copyright holder for the configure script.
+
+  * debian/patches/*:
+    - Add update_processing_of_packet_log.patch. This fixes a regression in
+    the simulation tests exhibited by the recent clknetsim changes.
+    (Closes: #931181)
+
+  * debian/rules:
+    - Use dh_missing --fail-missing.
+
+  * debian/tests/upstream-simulation-test-suite:
+    - Use a known good clknetsim commit. This should prevent regressions from
+    on-going “clknetsim” development.
+
+  * debian/usr.sbin.chronyd:
+    - Grant access rights only to the ntp_signd socket. (Closes: #928170)
+
+  [ Christian Ehrhardt ]
+  * debian/postrm:
+    - Re-establish systemd-timesyncd on removal. (MR: !1)
+
+ -- Vincent Blut <vincent.debian@free.fr>  Sat, 06 Jul 2019 20:33:41 +0200
+
+chrony (3.5-1) experimental; urgency=medium
+
+  * Import upstream version 3.5:
+    - Please see /usr/share/doc/chrony/NEWS.gz for the release notes.
+
+  * debian/control:
+    - Ignore net-tools and procps build-dependencies if the profile nocheck is
+    active.
+
+  * debian/rules:
+    - No test suite should be run if nocheck is passed to DEB_BUILD_OPTIONS.
+
+ -- Vincent Blut <vincent.debian@free.fr>  Wed, 15 May 2019 18:44:12 +0200
+
+chrony (3.5~pre1-1) experimental; urgency=medium
+
+  * Import upstream version 3.5-pre1:
+    - Please see /usr/share/doc/chrony/NEWS.gz for the release notes.
+
+  * debian/.gitlab-ci.yml:
+    - Use .build-package template job instead of .build-unstable. The latter
+    is deprecated.
+
+  * debian/chrony.keys:
+    - Fix the comment about the location of the list of supported hash
+    functions and output encoding. These information are now available by
+    consulting the “keyfile” directive in the chrony.conf(5) man page.
+
+  * debian/control:
+    - Drop dependency on lsb-base. Is is required when booting with sysvinit
+    and initscripts, however initscripts already Depends on lsb-base.
+    - Build-depend on net-tools and procps. kill, netstat and ps are needed
+    for the new system tests executed at build time (iff building as root).
+
+  * debian/copyright:
+    - Add an entry for test/system/* files.
+
+  * debian/patches/*:
+    - Drop all patches, they have been applied upstream.
+
+  * debian/postinst:
+    - Drop migration code from pre-stretch.
+
+  * debian/README.Debian:
+    - Fix information related to the chrony.keys file.
+
+ -- Vincent Blut <vincent.debian@free.fr>  Sun, 12 May 2019 22:16:14 +0200
+
+chrony (3.4-4) unstable; urgency=medium
+
+  * debian/patches/*:
+    - Add allow-further-syscalls-in-seccomp-filter.patch. Supplementing the
+    seccomp filter whitelist with those syscalls is a prerequisite, notably for
+    the arm64 architecture.
+
+  [ Leigh Brown ]
+  * debian/patches/*:
+    - Add allow-recv-send-in-seccomp-filter.patch. Necessary on armel and
+    ppc64el. Other architectures might also be affected. (Closes: #924494)
+
+ -- Vincent Blut <vincent.debian@free.fr>  Mon, 18 Mar 2019 19:35:34 +0100
+
+chrony (3.4-3) unstable; urgency=medium
+
+  * debian/.gitlab-ci.yml:
+    - Check for missing hardening flags.
+
+  * debian/patches/*:
+    - Add allow-_llseek-in-seccomp-filter.patch. Needed on various 32-bit
+    plateforms to log the {raw}measurements and statistics information when
+    the seccomp filter is enabled. Thanks a lot to Francesco Poli (wintermute)
+    <invernomuto@paranoici.org> for the report. (Closes: #923137)
+    - Add allow-waitpid-in-seccomp-filter.patch. Needed to correctly stop
+    chronyd on some plateforms when the seccomp filter is enabled.
+
+ -- Vincent Blut <vincent.debian@free.fr>  Mon, 04 Mar 2019 23:32:12 +0100
+
+chrony (3.4-2) unstable; urgency=medium
+
+  * debian/.gitlab-ci.yml:
+    - Replace home-made GitLab CI with the standard Salsa pipeline.
+    - Allow autopkgtest job to fail. The time-sources-from-dhcp-servers test
+    currently fails due to a testbed issue on salsa CI.
+
+  * debian/chrony.default:
+    - Enable the system call filter by default.
+
+  * debian/control:
+    - Bump standard-version to 4.3.0 (no changes required).
+    - Use the new debhelper-compat (= 12) notation and drop d/compat.
+    - Add Pre-Depends: ${misc:Pre-Depends}. Debhelper compatibility level 12
+    makes use of the “--skip-systemd-native” flag from “invoke-rc.d”. Adding
+    Pre-Depends: ${misc:Pre-Depends} to d/control ensure that we have a recent
+    enough version of “init-system-helpers”.
+    - Suggest networkd-dispatcher.
+
+  * debian/copyright:
+    - Add myself as a copyright holder for 2019.
+
+  * debian/links:
+    - Now that “networkd-dispatcher” is in the Debian archive, link
+    NetworkManager dispatcher script to networkd-dispatcher routable and off
+    states. Patch cherry-picked from Ubuntu; thanks to Christian Ehrhardt
+    <christian.ehrhardt@canonical.com> for working on this.
+
+  * debian/NEWS:
+    - Report that a system call filter is now enabled by default and the way
+    to disable it if needed.
+
+  * debian/rules:
+    - Don’t enable the system call filter on some architectures due to missing
+    support in the “libseccomp” and/or the Linux kernel.
+
+  * debian/upstream/:
+    - Strip upstream key from extra signatures. Thanks lintian!
+    - Remove the Miroslav-Lichvar.txt file as it serves no purpose.
+
+  * debian/usr.sbin.chronyd:
+    - Don’t include “tunables/sys”. The etc/apparmor.d/tunables/sys file has
+    been deprecated in AppArmor 2.13.1! The @{sys} variable is now defined in
+    “tunables/kernelvars” which is included in “tunables/global”.
+
+ -- Vincent Blut <vincent.debian@free.fr>  Wed, 13 Feb 2019 17:08:17 +0100
+
+chrony (3.4-1) unstable; urgency=medium
+
+  * Import upstream version 3.4:
+    - Please see /usr/share/doc/chrony/NEWS.gz for the release notes.
+
+  * Merge branch “experimental” into “master”.
+
+  * debian/chrony.service:
+    - Conflict with ntpsec.service.
+
+  * debian/copyright:
+    - Update copyright years.
+
+  * debian/patches/*:
+    - Remove fix-samplefilt-unit-test-to-work-with-low-precision-clock.patch,
+    fixed upstream.
+
+ -- Vincent Blut <vincent.debian@free.fr>  Fri, 21 Sep 2018 14:12:03 +0200
+
+chrony (3.4~pre1-2) experimental; urgency=medium
+
+  * debian/patches/*:
+    - Cherry-pick upstream patch to fix samplefilt unit test to work with
+    low-precision clocks. This should prevent chrony from failing to build
+    from source on HPPA and Alpha.
+
+ -- Vincent Blut <vincent.debian@free.fr>  Mon, 10 Sep 2018 18:39:58 +0200
+
+chrony (3.4~pre1-1) experimental; urgency=medium
+
+  * Import upstream version 3.4-pre1:
+    - Please see /usr/share/doc/chrony/NEWS.gz for the release notes.
+
+  * debian/:
+    - Add “.gitlab-ci.yml” file to use GitLab Continuous Integration.
+
+  * debian/chrony.if-{post-down,up}:
+    - Use the new “onoffline” command to tell chronyd to switch all sources to
+    the online or offline status according to the current network configuration.
+
+  * debian/chrony.ppp.ip-{down,up}:
+    - As for ifupdown scripts, use the “onoffline” command.
+
+  * debian/control:
+    - Bump standard-version to 4.2.1 (no changes required).
+
+  * debian/patches/*:
+    - Remove fall-back-to-urandom.patch. Applied in this prerelease.
+
+  * debian/post{inst,rm}:
+    - Use “command -v” instead of “which” to enhance portability.
+
+ -- Vincent Blut <vincent.debian@free.fr>  Sun, 02 Sep 2018 19:14:08 +0200
+
+chrony (3.3-3) unstable; urgency=medium
+
+  * debian/:
+    - Normalize packaging with “wrap-and-sort -ab”.
+
+  * debian/control:
+    - Bump standard-version to 4.2.0:
+        ↳ Install upstream release notes as “/usr/share/doc/chrony/NEWS.gz”.
+          Installing these as “/usr/share/doc/package/changelog.gz” is now
+          deprecated.
+
+  * debian/patches/:
+    - Cherry-pick upstream patch to avoid hangs when starting
+    chronyd on newer kernels by falling back to urandom.
+    Thanks to Gustavo Scalet <gustavo.scalet@collabora.com> for the report and
+    the initial patch. (LP: #1787366, Closes: #906276)
+
+  * debian/upstream/metadata:
+    - Add DEP12 upstream metadata file.
+
+ -- Vincent Blut <vincent.debian@free.fr>  Sat, 18 Aug 2018 16:23:19 +0200
+
+chrony (3.3-2) unstable; urgency=medium
+
+  * debian/chrony.service:
+    - Conflict with ntp.service.
+
+  * debian/control:
+    - Bump standard-version to 4.1.4 (no changes required).
+    - Switch to the Nettle cryptographic library for hash functions.
+
+  [ Helmut Grohne ]
+  * debian/rules:
+    - Pass CC to make and set “--host-system” to fix FTCBFS. (Closes: #895852)
+
+  [ Christian Ehrhardt ]
+  * debian/usr.sbin.chronyd:
+    - Support all paths suggested in the man page.
+    (LP: #1771028, Closes: #898614)
+
+ -- Vincent Blut <vincent.debian@free.fr>  Mon, 14 May 2018 21:37:30 +0200
+
+chrony (3.3-1) unstable; urgency=medium
+
+  * Import upstream version 3.3:
+    - Please see /usr/share/doc/chrony/changelog.gz for the release notes.
+
+  * Merge branch “experimental” into “master”.
+
+  * debian/copyright:
+    - Update copyright year.
+
+  * debian/usr.sbin.chronyd:
+    - Allow CAP_NET_ADMIN to support HW timestamping. (LP: #1761327)
+
+ -- Vincent Blut <vincent.debian@free.fr>  Thu, 05 Apr 2018 02:08:31 +0200
+
+chrony (3.3~pre1-1) experimental; urgency=medium
+
+  * Import upstream version 3.3-pre1:
+    - Please see /usr/share/doc/chrony/changelog.gz for the release notes.
+
+  * debian/copyright:
+    - Add “hash_nettle.c” copyright information and update copyright year of
+    test/unit/*
+
+ -- Vincent Blut <vincent.debian@free.fr>  Thu, 15 Mar 2018 13:58:21 +0100
+
+chrony (3.2-5) unstable; urgency=medium
+
+  [ Christian Ehrhardt ]
+  * debian/usr.sbin.chronyd:
+    - Allow write access to RTC, PPS and PTP devices.
+    (Closes: #891201, LP: #1751241)
+
+ -- Vincent Blut <vincent.debian@free.fr>  Wed, 28 Feb 2018 17:31:08 +0100
+
+chrony (3.2-4) unstable; urgency=medium
+
+  * debian/changelog:
+    - Remove trailing spaces.
+
+  * debian/chrony-dnssrv@.service:
+    - Use NTP servers obtained from DNS SRV records.
+
+  * debian/chrony-dnssrv@.timer:
+    - Periodic lookup of DNS SRV records.
+
+  * debian/chrony-helper:
+    - New helper script to make use of NTP servers obtained from DHCP and
+    _ntp._udp DNS SRV records.
+
+  * debian/chrony.dhcp:
+    - Add a dhclient-exit-hook script to add/remove NTP servers depending
+    on the operations invoked by the DHCP client. (Closes: #889656)
+
+  * debian/chrony.service:
+    - Run “/usr/lib/chrony/chrony-helper update-daemon” after starting chronyd.
+
+  * debian/control:
+    - Suggest dnsutils. The dig utility is used to update files with NTP
+    servers from DNS SRV records.
+
+  * debian/init:
+    - Run “/usr/lib/chrony/chrony-helper update-daemon” after starting chronyd.
+
+  * debian/install:
+    - Install the chrony-helper script in /usr/lib/chrony.
+    - Install chrony-dnssrv@.* files in /lib/systemd/system.
+
+  * debian/postinst:
+    - Don’t use recursive chown as this is vulnerable to hardlink attacks on
+    mainline, non-Debian kernels that do not have fs.protected_hardlinks=1.
+    Thanks Lintian!
+
+  * debian/postrm:
+    - Remove “/run/chrony” on purge.
+
+  * debian/rules:
+    - Install the dhclient-exit-hook script in /etc/dhcp/dhclient-enter-hooks.
+
+  * debian/tests/:
+    - Use autopkgtest to ensure that chronyd can use NTP servers obtained from
+    DHCP servers.
+
+ -- Vincent Blut <vincent.debian@free.fr>  Tue, 20 Feb 2018 18:27:10 +0100
+
+chrony (3.2-3) unstable; urgency=medium
+
+  [ Christian Ehrhardt ]
+  * debian/chrony.default:
+    - Mention systemd service file in the comment.
+
+  * debian/chrony.service:
+    - Support the DAEMON_OPTS variable from “/etc/default/chrony” in systemd
+    environment. (LP: #1746081, Closes: #889012)
+
+  * debian/usr.sbin.chronyd:
+    - Allow the creation of /run/chrony on demand.
+    (LP: #1746444, Closes: #889011)
+
+ -- Vincent Blut <vincent.debian@free.fr>  Wed, 07 Feb 2018 21:27:09 +0100
+
+chrony (3.2-2) unstable; urgency=medium
+
+  * Initial AppArmor profile for chronyd. Thanks to Jamie
+    Strandboge <jamie@ubuntu.com>. (Closes: #888038)
+
+  * debian/compat:
+    - Bump to debhelper compat 11.
+
+  * debian/control:
+    - Bump standard-version to 4.1.3 (no changes required).
+    - Build depend on debhelper ≥ 11.
+    - Set “Rules-Requires-Root: no”.
+    - Move Vcs-* to salsa.debian.org.
+
+  * debian/copyright:
+    - Add myself as a copyright holder for 2018.
+
+  * debian/postinst:
+    - Don’t force removal of cron file since it doesn’t exist anymore.
+
+  * debian/preinst:
+    - Update the chrony version on which to act.
+    - Add the debhelper token.
+
+  * debian/usr.sbin.chronyd:
+    - Improve AppArmor profile to support more chronyd features and ease
+    portability with other distros.
+
+ -- Vincent Blut <vincent.debian@free.fr>  Sun, 28 Jan 2018 19:33:46 +0100
+
+chrony (3.2-1) unstable; urgency=medium
+
+  * Import upstream version 3.2:
+    - Please see /usr/share/doc/chrony/changelog.gz for the release notes.
+
+ -- Vincent Blut <vincent.debian@free.fr>  Fri, 15 Sep 2017 11:37:10 +0200
+
+chrony (3.2~pre2-1) experimental; urgency=medium
+
+  * Import upstream version 3.2-pre2:
+    - Please see /usr/share/doc/chrony/changelog.gz for the release notes.
+
+  * debian/control:
+    - Bump standard-version to 4.1.0 (no changes required).
+
+  * debian/copyright:
+    - Update copyright years.
+
+ -- Vincent Blut <vincent.debian@free.fr>  Wed, 30 Aug 2017 15:48:37 +0200
+
+chrony (3.2~pre1-1) experimental; urgency=medium
+
+  * Import upstream version 3.2-pre1:
+    - Please see /usr/share/doc/chrony/changelog.gz for the release notes.
+
+  * debian/patches/*:
+    - Remove allow_getpid_in_seccomp_filter.patch and update the series file
+    accordingly.
+
+  * debian/tests/upstream-simulation-test-suite:
+    - Run tests in multiple iterations.
+
+ -- Vincent Blut <vincent.debian@free.fr>  Tue, 25 Jul 2017 21:13:22 +0200
+
+chrony (3.1-5) unstable; urgency=medium
+
+  * debian/chrony.if-up:
+    - Do not pass the “burst” command to chronyc as the script could return an
+    error in certain situations. As a consequence, that would prevent ifupdown
+    from writing the current state of the interfaces in /run/network/ifstate.
+    Thanks to John Eikenberry <jae@zhar.net> for reporting that issue.
+    (Closes: #868491)
+
+  * debian/chrony.ppp.ip-up:
+    - Take the same action as for the “chrony.if-up” script as a precautionary
+    measure.
+
+ -- Vincent Blut <vincent.debian@free.fr>  Mon, 17 Jul 2017 16:47:56 +0200
+
+chrony (3.1-4) unstable; urgency=medium
+
+  * Now that Stretch has been released (\o/), let’s upload chrony 3.1 to
+    unstable.
+
+  * debian/:
+    - Remove the menu file used to launch “chronyc”. It is a CLI only tool,
+    thus it probably does not make a lot of sense to keep it in the Debian
+    menu.
+
+  * debian/control:
+    - Drop dependency on pre-jessie util-linux version.
+    - Bump standard-version to 4.0.0 (no changes required).
+
+  * debian/tests/upstream-simulation-test-suite:
+    - Fix the leading comment which mentioned “vm” despite the fact that the
+    test runs in a container.
+
+ -- Vincent Blut <vincent.debian@free.fr>  Mon, 19 Jun 2017 02:30:10 +0200
+
+chrony (3.1-3) experimental; urgency=medium
+
+  * debian/chrony.if-{post-down,up}:
+    - Remove unnecessary “else” statements.
+
+  * debian/chrony.ppp.ip-down:
+    - Don’t check and delete “/var/run/chrony-ppp-up”, that file doesn’t exist
+    anymore.
+    - Check for pid file existence instead of calling “pidof”.
+
+  * debian/chrony.ppp.ip-up:
+    - Don’t create “/var/run/chrony-ppp-up” file after the ppp link came up.
+    - Check for pid file existence instead of calling “pidof”.
+    - Don’t call “chronyc” using its absolute path.
+    - Check for the presence of a default route before advising “chronyd” that
+    the network connectivity to the sources is ready.
+
+  * debian/init:
+    - Check if “$PIDFILE” exists before taking action.
+    - Do not print informational messages.
+    - Remove the “chronyd” pid file when stopping as it doesn’t do it on
+    its own.
+    - Rework the “restart|force-reload” pattern.
+    - Make use of some init-functions.
+    - Print a message if “chronyd” is already running while attempting to start
+    it.
+    - Do not delete “/var/run/chrony-ppp-up”, that file doesn’t exist anymore.
+
+  * d/rules:
+    - Move the default pid file from “/var/run” to “/run”.
+
+  * d/tests/*:
+    - Use autopkgtest facility to run the upstream simulation test suite.
+
+ -- Vincent Blut <vincent.debian@free.fr>  Sun, 14 May 2017 17:26:15 +0200
+
+chrony (3.1-2) experimental; urgency=medium
+
+  * Merge branch 'master' into experimental. (Closes: #861258)
+
+  * debian/patches/*:
+    - Remove the “fix_time_smoothing_in_interleaved_mode.patch” patch. Not
+    needed anymore.
+
+ -- Vincent Blut <vincent.debian@free.fr>  Wed, 26 Apr 2017 21:17:43 +0200
+
+chrony (3.1-1) experimental; urgency=medium
+
+  * Import upstream version 3.1:
+    - Please see /usr/share/doc/chrony/changelog.gz for the release notes.
+
+  * debian/chrony.conf:
+    - Remove the “hwclockfile” directive. Unneeded now that the configure
+    script allows us to set the default path to the adjtime file via the
+    “--with-hwclockfile” option.
+
+  * debian/copyright:
+    - Update copyright years.
+
+  * debian/rules:
+    - Specify default path to hwclock adjtime file.
+
+ -- Vincent Blut <vincent.debian@free.fr>  Thu, 02 Feb 2017 19:24:30 +0100
+
+chrony (3.0-4) unstable; urgency=medium
+
+  * debian/patches/*:
+    - Backport commit 768bce799bfe to make chrony operable with the syscall
+    filtering feature enabled in level 1. (Closes: #861258)
+
+ -- Vincent Blut <vincent.debian@free.fr>  Wed, 26 Apr 2017 17:39:44 +0200
+
+chrony (3.0-3) unstable; urgency=medium
+
+  * debian/patches/*:
+    - Backport an upstream patch to fix time smoothing in interleaved mode.
+    (Closes: #854424)
+
+ -- Vincent Blut <vincent.debian@free.fr>  Tue, 07 Feb 2017 00:37:24 +0100
+
+chrony (3.0-2) unstable; urgency=medium
+
+  * debian/chrony.conf:
+    - Disable logging by default, it waste some disk space and users are
+    probably better served by “chronyc sources” and “chronyc sourcestats”
+    commands anyway.
+
+  * debian/chrony.service:
+    - Remove the “Restart=on-failure” option. There are possible security
+    implications for NTP clients.
+
+  * debian/dirs:
+    - Add etc/logrotate.d to avoid build failure.
+
+  * Remove our logrotate configuration file in favour of the upstream’s one.
+
+ -- Vincent Blut <vincent.debian@free.fr>  Wed, 18 Jan 2017 15:26:31 +0100
+
+chrony (3.0-1) unstable; urgency=medium
+
+  * Import upstream version 3.0:
+    - Please see /usr/share/doc/chrony/changelog.gz for the release notes.
+
+  * Merge branch “experimental”:
+    - Enable support for MS-SNTP authentication in Samba.
+    - Rename --chronysockdir to --chronyrundir.
+    - Enable seccomp facility on powerpcspe.
+
+  * debian/chrony.conf:
+    - Make use of the “makestep” directive to step the system clock instead of
+    slewing it when necessary.
+    - Drop the “offline” option as per upstream’s advice to render chrony’s
+    start-up sequence safer.
+
+  * debian/chrony.service:
+    - Reflect init-helper script deletion.
+
+  * debian/copyright:
+    - Add myself as a copyright holder for 2017.
+    - Adjust copyright holders and update some copyright years. Kudos to Paul
+    Gevers <elbrus@debian.org> for spotting the necessary updates.
+
+  * debian/init:
+    - Reflect init-helper script deletion.
+
+  * debian/install:
+    - Don’t install the init-helper script, it has been deleted.
+
+  * debian/README.Debian:
+    - Remove obsolete information.
+
+  * Remove the init-helper script as it no longer needed.
+
+ -- Vincent Blut <vincent.debian@free.fr>  Tue, 17 Jan 2017 22:05:31 +0100
+
+chrony (3.0~pre3-1) experimental; urgency=low
+
+  * Import upstream version 3.0-pre3:
+    - Please see /usr/share/doc/chrony/changelog.gz for the release notes.
+
+ -- Vincent Blut <vincent.debian@free.fr>  Fri, 06 Jan 2017 14:20:13 +0100
+
+chrony (3.0~pre2-2) experimental; urgency=low
+
+  * Merge branch “master”.
+
+  * Enable seccomp facility on powerpcspe.
+
+ -- Vincent Blut <vincent.debian@free.fr>  Tue, 03 Jan 2017 18:17:13 +0100
+
+chrony (3.0~pre2-1) experimental; urgency=low
+
+  * Import upstream version 3.0-pre2:
+    - Please see /usr/share/doc/chrony/changelog.gz for the release notes.
+
+ -- Vincent Blut <vincent.debian@free.fr>  Thu, 15 Dec 2016 15:23:44 +0100
+
+chrony (3.0~pre1-1) experimental; urgency=low
+
+  * Import upstream version 3.0-pre1:
+    - Please see /usr/share/doc/chrony/changelog.gz for the release notes.
+
+  * debian/copyright:
+    - Mention new files.
+
+  * debian/rules:
+    - Enable support for MS-SNTP authentication in Samba.
+    - Rename --chronysockdir to --chronyrundir.
+
+ -- Vincent Blut <vincent.debian@free.fr>  Sat, 10 Dec 2016 16:30:19 +0100
+
+chrony (2.4.1-3) unstable; urgency=medium
+
+  * debian/apm:
+    - Removing that script as APM as been replaced by ACPI long time ago, thus
+    it’s highly probable that it isn’t useful anymore.
+
+  * debian/chrony.maintscript:
+    - Remove the apm script’s conffile.
+
+  * debian/chrony.service:
+    - Supply a systemd service file.
+    - Update unit section’s description. Add chronyc and chrony.conf man pages
+    information and remove reference to “/usr/share/doc/chrony.txt.gz” which
+    is not generated anymore.
+    - Update unit section’s documentation.
+
+  * debian/dirs:
+    - Don’t create etc/apm/event.d as the apm script isn’t provided anymore.
+
+  * debian/init:
+    - Convert to use the init-helper script.
+
+  * debian/init-helper:
+    - Add a helper script that will be used to maintain feature parity between
+    the SysV script and the systemd service file.
+
+  * debian/install:
+    - Install the init-helper script in “/usr/lib/chrony”.
+
+  * debian/rules:
+    - Don’t install the now removed apm script.
+
+ -- Vincent Blut <vincent.debian@free.fr>  Thu, 22 Dec 2016 02:16:54 +0100
+
+chrony (2.4.1-2) unstable; urgency=medium
+
+  * debian/chrony.conf:
+    - Don’t create sample histories by default. Using that feature does not
+    make a lot of sense when using a pool of rapidely rotating time servers.
+    - Remove unused directives.
+    - Improve (well, I hope! ;-) ) the configuration file readability.
+    - Reword the driftfile directive commentary.
+    - Shorten the lead-in comment.
+
+  * debian/control:
+    - Build-depend on pps-tools only on linux.
+    - Remove libnss3-dev from Build-Depends until #846012 is fixed.
+
+  * debian/init:
+    - Don’t pass the “-r” option when restarting chronyd as we have disabled
+    the creation of sample histories by default.
+
+  * debian/rules:
+    - Drop dh_auto_build override. Nowadays, the documentation is built by
+    default.
+
+ -- Vincent Blut <vincent.debian@free.fr>  Fri, 9 Dec 2016 16:58:32 +0100
+
+chrony (2.4.1-1) unstable; urgency=medium
+
+  * Import upstream version 2.4.1:
+    - Please see /usr/share/doc/chrony/changelog.gz for the release notes.
+
+  * debian/chrony.default:
+    - New file used to pass options to chronyd. Thanks to nutzteil
+    <nutzteil@web.de> for the suggestion and the initial patch.
+    (Closes: #834240)
+
+  * debian/compat:
+    - Bump to debhelper compat 10.
+
+  * debian/control:
+    - Build depend on debhelper ≥ 10.
+
+  * debian/copyright:
+    - Use HTTPS for all URI.
+
+  * debian/init:
+    - Read and execute options assigned to the “DAEMON_OPTS” variable.
+
+  * debian/rules:
+    - Drop dh “--parallel” option. Enabled by default in debhelper 10.
+
+ -- Vincent Blut <vincent.debian@free.fr>  Mon, 21 Nov 2016 12:58:05 +0100
+
+chrony (2.4-1) unstable; urgency=medium
+
+  The “Fix decade-old bug reports” release.
+
+  * Import upstream version 2.4:
+    - Please see /usr/share/doc/chrony/changelog.gz for the release notes.
+
+  * debian/chrony.if-{up,post-down}:
+    - New scripts used to put chronyd online/offline depending on the
+    state of the connection. (Closes: #240528,#312092,#389961)
+
+  * debian/chrony.keys:
+    - Highlight “chronyc keygen” command to generate keys.
+
+  * debian/chrony.ppp.ip-down:
+    - Be sure that there is no default route before going offline.
+    (Closes: #252131)
+
+  * debian/control:
+    - Remove install-info dependency.
+    - Remove texinfo build dependency since documentation in Texinfo format
+    has been dropped upstream.
+    - Build depend on asciidoctor ≥ 1.5.3-1~. The version constraint is
+    important since chrony’s man pages are generated from “adoc” files, a
+    functionality that has been added in asciidoctor 1.5.3.
+
+  * debian/dirs:
+    - Add “etc/NetworkManager/dispatcher.d”.
+
+  * debian/doc-base:
+    - Remove the file since we do not generate chrony.{html,txt} anymore.
+
+  * debian/docs:
+    - Remove references to chrony.{html,txt}.
+
+  * debian/patches/*:
+    - Drop fix-ftbfs-on-powerpc-ppc64-ppc64el.diff; applied upstream.
+    - Update the “series” file accordingly.
+
+  * debian/postinst:
+    - Use ucfr to associate chrony with its configuration files. Suggested by
+    Paul Gevers <elbrus@debian.org>
+
+  * debian/postrm:
+    - Remove all vestiges of the association between chrony and its
+    configuration files. Also suggested by Paul Gevers <elbrus@debian.org>
+
+  * debian/rules:
+    - Provide upstream NetworkManager dispatcher script.
+
+  * debian/watch:
+    - Use HTTPS to fetch new upstream releases.
+    - Switch to version 4 format.
+
+ -- Vincent Blut <vincent.debian@free.fr>  Fri, 17 Jun 2016 17:20:08 +0200
+
+chrony (2.3-2) unstable; urgency=low
+
+  * Cherry pick upstream patch to fix FTBFS on PowerPC, ppc64 and ppc64el
+    architectures.
+
+ -- Vincent Blut <vincent.debian@free.fr>  Fri, 20 May 2016 14:21:14 +0200
+
+chrony (2.3-1) unstable; urgency=low
+
+  * Import upstream version 2.3:
+    - Please see /usr/share/doc/chrony/changelog.gz for the release notes.
+    (Closes: #818235)
+
+  * debian/chrony.conf:
+    - Drop the “logchange” directive. Upstream has enabled “logchange” by
+    default with a threshold of 1 second. We now use that instead of our custom
+    threshold of 0,5 second which tended to spam syslog.
+    - Remove obsolete comment.
+
+  * debian/chrony.lintian-overrides:
+    - Update “chrony.keys” path
+
+  * debian/control:
+    - Bump standard-version to 3.9.8 (no changes required).
+    - Use HTTPS transport protocol for the homepage URL.
+
+  * debian/copyright:
+    - Add some entries about new or untracked files.
+
+  * debian/postinst:
+    - Move /usr/share/chrony/chrony.keys template to /etc/chrony using ucf.
+    - Avoid displaying needless prompt when upgrading to chrony ≥ 2.2.1-1.
+    (Closes: #820087)
+
+  * debian/postrm:
+    - Remove chrony.keys on purge.
+    - Remove all vestiges of chrony.keys from the state hashfile.
+
+  * debian/rules:
+    - Re-enable test suite.
+    - Remove dh_installinit override. The init script is LSB-compliant so
+    passing the “default” option or the two-digit sequence number is unneeded.
+    - Explicitly set the NTP era. With this change, the NTP time will be
+    mapped from 1970-01-01T00:00:00Z to 2106-02-07T06:28:16Z. Thanks to this
+    fixed value, chrony build should be reproducible.
+    - Move the key file template (chrony.keys) in /usr/share/chrony.
+    - Force /usr/share/chrony/chrony.keys to use 0640 modes.
+
+ -- Vincent Blut <vincent.debian@free.fr>  Wed, 18 May 2016 23:13:05 +0200
+
+chrony (2.2.1-1) unstable; urgency=medium
+
+  * Import upstream versions 2.2 and 2.2.1:
+    - Please see /usr/share/doc/chrony/changelog.gz for the release notes.
+    - The 2.2.1 release version fixes CVE-2016-1567. (Closes: #812923)
+
+  * debian/chrony.conf:
+    - Drop the commandkey directive. It is obsolete since the introduction of a
+    Unix domain command socket in chrony 2.2.
+    - Fix keyfile directive commentary.
+
+  * debian/chrony.keys:
+    - New file template.
+
+  * debian/chrony.lintian-overrides:
+    - New file used to force lintian to stop complaining about the “chrony.keys”
+    file modes (0640).
+
+  * debian/chrony.ppp.ip-down:
+    - Drop obsolete authentication method to the chronyd daemon. This is now
+    handled by the usage of a Unix domain command socket.
+
+  * debian/chrony.ppp.ip-up:
+    - Drop obsolete authentication method to the chronyd daemon. This is now
+    handled by the usage of a Unix domain command socket.
+    - Reinstate the “burst” chronyc command.
+
+  * debian/control:
+    - Build depend on libseccomp-dev ≥ 2.2.3-3~. We need it to provide syscall
+    filtering.
+    - Fix a typo relative to the name of an architecture.
+    - Build depend on pkg-config.
+    - Restrict libcap-dev build dependency on Linux only.
+    - Depend on iproute2 instead of net-tools.
+    - Drop timelimit dependency.
+    - Update Vcs-Git to use HTTPS.
+    - Bump standard-version to 3.9.7 (no changes required).
+
+  * debian/copyright:
+    - Update copyright year for debian/*.
+
+  * debian/init:
+    - Make use of “ip r” instead of “netstat -rn”. (Closes: #818234)
+    - Delete unused “FLAGS” variable.
+    - Do not execute ip and chronyc through timelimit.
+    - Don’t call chronyc using its absolute path.
+    - Check if the value of the DAEMON variable is executable.
+    - Drop the two seconds delay as it should be unnecessary.
+    - Drop obsolete authentication method from the putonline() function.
+    - Fix indentation issue in the putonline() function.
+
+  * debian/logrotate:
+    - Do not pass the “-a” option to chronyc, it’s no longer necessary.
+
+  * debian/NEWS:
+    - Add a comment about the command key suppression from the “chrony.keys”
+    file.
+
+  * debian/patches/:
+    - Drop 01_do-not-install-copying-file.patch, not needed anymore.
+      ↳ Remove reference to that patch from the series file.
+
+  * debian/postinst:
+    - Do not create an ID/key pair for command authentication. Configuration
+    and monitoring via chronyc is now done using Unix domain socket accessible
+    by root or by the system user to which chronyd will drop root privileges,
+    i.e. _chrony.
+
+  * debian/postrm:
+    - Remove /var/lib/chrony content only on purge. (Closes: #568492)
+
+  * debian/README.Debian:
+    - Drop obsolete statement.
+
+  * debian/rules:
+    - Build with --enable-scfilter.
+    - Install the “chrony.keys” file in /etc/chrony/ with 0640 modes.
+    - Override dh_fixperms to prevent it from modifying modes of the
+    “chrony.keys” file. By default, dh_fixperms tries to set the default modes
+    (0644).
+    - Move the “chronyd.sock” file from /var/run/chrony to /run/chrony.
+
+ -- Vincent Blut <vincent.debian@free.fr>  Sat, 19 Mar 2016 14:42:23 +0100
+
+chrony (2.1.1-1) unstable; urgency=medium
+
+  * Import upstream version 2.0 and 2.1.1:
+    - Please see /usr/share/doc/chrony/changelog.gz for the release notes.
+
+  * debian/:
+    - Rename ppp scripts from ip-{up,down} to chrony.ppp.ip-{up,down}.
+    Necessary to let dh_installppp do its magic.
+
+  * debian/chrony.conf:
+    - Use the new 'pool' directive to specify the pool of NTP servers.
+    - Use the iburst option to speed up the initial synchronization.
+    - Drop the minpoll option. There is no point to deviate from upstream here.
+    Consequently, the default minimum polling interval is now 64 seconds
+    instead of 256 seconds.
+    - Enable kernel synchronization of the RTC via the 'rtcsync' directive.
+    - Drop the commented out 'rtcfile' directive in the configuration file.
+    - Stricly act as an NTP client by default. Serving time to other systems
+    should be the decision of the administrator(s). (Closes: #778770)
+    - Clarify some comments.
+    - Improve comment about the 'commandkey' directive.
+
+  * debian/control:
+    - Drop 'Recommends: udev (>= 0.124-1)' since it predates Debian squeeze.
+
+  * debian/copyright:
+    - Update copyright years.
+    - Various cleanups.
+    - Update relative to sys_macosx.{c,h} files.
+    - The test/simulation/test.common file is under the GPL-2+ license.
+    Thanks to Paul Gevers <elbrus@debian.org> for catching it.
+
+  * debian/NEWS:
+    - Comment the deactivation of the NTP server capability by default.
+
+  * debian/patches/:
+    - Refresh 01_do-not-install-copying-file.patch.
+
+  * debian/README.Debian:
+    - Fix misleading information.
+
+  * debian/rules:
+    - No need to install ppp scripts from the 'rules' script. Let dh_installppp
+    handle that.
+
+ -- Vincent Blut <vincent.debian@free.fr>  Wed, 18 Nov 2015 00:11:23 +0100
+
+chrony (1.31.1-2) unstable; urgency=medium
+
+  * Rename the NEWS.Debian file to NEWS. dh_installchangelogs doesn’t seems
+    to be able to deal with the former name.
+
+ -- Vincent Blut <vincent.debian@free.fr>  Thu, 17 Sep 2015 21:50:30 +0200
+
+chrony (1.31.1-1) unstable; urgency=medium
+
+  * Import upstream version 1.31 and 1.31.1:
+    - Please see /usr/share/doc/chrony/changelog.gz for release notes.
+
+  * debian/chrony.conf:
+    - Use the 'hwclockfile' directive. Avoid using text processing methods in
+    the post install script to find out if the RTC keeps local time or UTC.
+    (Closes: #778710)
+
+  * debian/clean:
+    - Add getdate.c
+
+  * debian/control:
+    - Move chrony from admin to net section.
+    - Change priority from extra to optional.
+    - Build depends on libcap-dev. (Closes: #768803)
+    - Bump standards-version to 3.9.6 (no changes required).
+    - Set myself as maintainer and Joachim as uploader.
+    - Update Vcs-Browser URL to use cgit and https.
+    - Build depends on pps-tools. Provides PPSAPI (RFC-2783) support.
+    - Improve the synopsis.
+    - Depend on util-linux (>= 2.20.1-5). Ensure that the 'UTC=' setting
+    from the '/etc/default/rcS' file have been migrated to UTC/LOCAL in
+    '/etc/adjtime'.
+    - Depends on adduser. Needed to create "_chrony" system user/group.
+
+  * debian/copyright:
+    - Add myself to copyright holders.
+    - Remove spaces from short name license (fix Lintian warning)
+    - Filled short license field (RSA-MD) (fix Lintian warning)
+    - Move comment to the "Comment:" field
+
+  * debian/logrotate:
+    - Simplify postrotate script. Thanks to Frédéric Brière
+    <fbriere@fbriere.net> for reporting and diagnosing the issue.
+    (Closes: #763542)
+
+  * debian/patches:
+    - Drop patches for issues fixed upstream.
+    - Rename and update patch. Update the series file accordingly.
+
+  * debian/postinst:
+    - Pass the '--three-way' option to ucf.
+    - Remove useless text processing methods as we now use the 'hwclockfile'
+    directive. (Closes: #778711)
+    - Create "_chrony" system user/group.
+    - Update the "new_file" path in the ucf invocation.
+    - Remove the MAILPASSWORD shell variable as we don’t use it.
+
+  * debian/postrm:
+    - Drop removal instruction of /etc/cron.weekly/chrony.
+    - Remove "_chrony" system user/group on purge.
+    - Don’t pass the --group option to deluser.
+
+  * debian/NEWS.Debian:
+    - New file incorporating worthwhile changes in this release.
+
+  * debian/README.Debian:
+    - Fix typo, thanks to Paul Gevers <elbrus@debian.org> for catching it.
+    - Missing word added.
+
+  * debian/rules:
+    - Build with all hardening flags.
+    - Ease the reading of configure options.
+    - Specify "_chrony" as default chronyd user. This is the system user to
+    which chronyd will drop root privileges. You'll find further information
+    in /usr/share/doc/chrony/README.Debian.
+    (Closes: #688971)
+
+ -- Vincent Blut <vincent.debian@free.fr>  Sun, 6 Sep 2015 22:39:22 +0200
+
+chrony (1.30-2) unstable; urgency=medium
+
+  * With the following security bugfixes (Closes: #782160):
+    - Fix CVE-2015-1853: Protect authenticated symmetric NTP
+                         associations against DoS attacks.
+    - Fix CVE-2015-1821: Fix access configuration with subnet
+                         size indivisible by 4.
+    - Fix CVE-2015-1822: Fix initialization of reply slots for
+                         authenticated commands.
+  * debian/control:
+   - Update e-mail address of myself.
+   - Add Vincent Blut as co-maintainer.
+
+ -- Joachim Wiedorn <joodebian@joonet.de>  Fri, 10 Apr 2015 11:41:31 +0200
+
+chrony (1.30-1) unstable; urgency=medium
+
+  * New upstream release with following bugfixes:
+    - Fix crash when selecting with multiple preferred sources.
+    - Fix frequency calculation with large frequency offsets.
+    - Fix code writing drift and RTC files to compile correctly.
+    - Fix -4/-6 options in chronyc to not reset hostname set by -h.
+    - Fix refclock sample validation with sub-second polling interval.
+    - Set stratum correctly with non-PPS SOCK refclock and local stratum.
+    - Modify dispersion accounting in refclocks to prevent PPS getting
+        stuck with large dispersion and not accepting new samples.
+    - Move faq.txt (PHP style) to a plain text file FAQ. Closes: #415729
+
+  * Add gpg signature of upstream developer for use with uscan.
+  * Update debian/watch, add check of upstream gpg signature.
+  * Update all patches.
+
+  * Bugfix: Use /etc/adjtime in postinst script to recognize
+      UTC hardware clock.  Closes: #680498
+  * Use logrotate instead of cron script. Closes: #323966
+  * debian/rules: disable test simulation.
+
+  * debian/control: remove obsolete build dependency to dpkg-dev.
+  * debian/install, debian/dirs, debian/clean: Update.
+  * debian/copyright: Update and add entries.
+
+ -- Joachim Wiedorn <ad_debian@joonet.de>  Sun, 10 Aug 2014 19:10:35 +0200
+
+chrony (1.29.1-1) unstable; urgency=high
+
+  * New upstream release with bugfix:
+    - Closes: #737644: Fixing vulnerability:
+        CVE-2014-0021 - traffic amplification in cmdmon protocol
+        (incompatible with previous protocol version, but chronyc
+        supports both).
+
+ -- Joachim Wiedorn <ad_debian@joonet.de>  Thu, 06 Feb 2014 15:51:47 +0100
+
+chrony (1.29-1) unstable; urgency=medium
+
+  * New upstream release with some bugfixes:
+    - Closes: #719132: new upstream version, fixes security bugs.
+    - Closes: #719203: Fixing vulnerabilities:
+        CVE-2012-4502 - Buffer overflow,
+        CVE-2012-4503 - Uninitialized data.
+
+  * debian/control:
+    - Set myself as new maintainer. Closes: #705768
+    - Bump to Standards-Version 3.9.5.
+    - Move to debhelper >= 9 and compat level 9.
+    - Update package descriptions.
+    - Add Vcs fields to new git repository.
+    - Add dependency to lsb-base (for init script).
+    - Add build dependency to libtomcrypt-dev.
+  * Move to source format 3.0 (quilt).
+  * Add the following patch files:  (Closes: #637514)
+    - 01_fix-small-typo-in-manpages
+    - 03_recreate-always-getdate-c
+    - 04_do-not-look-for-ncurses    (Closes: #646732)
+    - 05_disable-installation-of-license
+  * debian/rules:
+    - Move to dh-based rules file.
+    - Enable parallel builds.
+
+  * Add debian/watch file.
+  * Full update of debian/copyright file.
+  * Add debian/doc-base file.
+  * Full update of debian/README.Debian file.
+  * Update debian/postinst, debian/postrm, debian/prerm.
+  * Remove obsolete debian/preinst. Reduce mailing within postinst.
+  * Do not use old md5sum file anymore for ucf in postinst script.
+  * Add status action in init script (debian/init). Closes: #652207
+  * Add debian/install file for installing example of chrony.conf.
+  * Reduce debian/dirs file for use with debhelper 9.
+
+ -- Joachim Wiedorn <ad_debian@joonet.de>  Fri, 20 Dec 2013 23:35:25 +0100
+
+chrony (1.26-4) unstable; urgency=low
+
+  * QA upload.
+  * Depend on net-tools, for netstat (closes: #707260).
+
+ -- Colin Watson <cjwatson@debian.org>  Mon, 08 Jul 2013 18:00:45 +0100
+
+chrony (1.26-3) unstable; urgency=low
+
+  * Orphaned.
+
+ -- John G. Hasler <jhasler@debian.org>  Fri, 19 Apr 2013 13:08:31 -0500
+
+chrony (1.26-2) unstable; urgency=low
+
+  * Fixed Makefile.in so that getdate.c gets made (and removed
+    in "clean").  This will go upstream.  Moved faq stuff in rules
+    from binary-indep to binary-arch.
+  * Restored accidently deleted nmu changelog entry.
+
+  * Applied patch from Moritz Muehlenhoff <jmm@debian.org>
+    Closes: #655123 Please enabled hardened build flags
+
+  * Fixed upstream.
+    Closes: #518385 Chrony segfaults on startup (narrowed down to
+    chronyc and "burst")
+
+  * Added DEB_BUILD_OPTIONS=noopt to rules.
+    Added build-arch and build-indep to rules.
+    Prefix is now 'usr'.
+    Changed to dh_installman.
+    Fixed "clean:" target.
+    Closes: #479389 Improvements for debian/rules
+
+  * Fixed upstream.
+    Closes: #195620 Strange "System time : xxx seconds slow of NTP time"
+    output
+
+  * Upstream changes should have fixed this.
+    Closes:#294030 chronyd makes the whole system briefly (< 1 second)
+    freeze
+
+  * Fixed by upstream changes and new LSB headers.
+    Closes: #407466 Chrony won't access hardware clock but prevents
+    hwclock from doing so either
+
+ -- John G. Hasler <jhasler@debian.org>  Sun, 01 Jul 2012 22:05:56 -0500
+
+chrony (1.26-1) unstable; urgency=low
+
+  * New upstream release
+    Closes: #348554: chrony and hwclock packages not coordinated.
+    Closes: #572964: RTC support is missing.
+    Closes: #642209: add RTC support for linux 3.0.
+    Closes: #644241: new upstream version 1.26 available.
+
+  * Applied patches from Joachim Wiedorn <ad_debian@joonet.de>:
+    Fixed several typos in man pages and README.
+    Added version.h.
+    Moved default chrony.conf to debian/ .
+    Renamed cron and init files.
+    Removed debian/NEWS.Debian, debian/info.
+    Added debian/clean.
+    Updated debian/copyright.  COPYING stays.  Upstream requires it.
+    Fixed debian/menu, debian/control, updated debian/compat.
+    Added "--without-readline" to debian/rules: rewrite later.
+    Minor fixes to initscript: rewrite later.
+
+    Closes: #646732 Move from readline support to editline support.
+    Closes: #598253 Fix typo in LSB init headers ($hwclock to $time).
+    Closes: #600403 Fix init check with PPP connection.
+
+ -- John G. Hasler <jhasler@debian.org>  Sun, 17 Jun 2012 21:55:47 -0500
+
+chrony (1.24-3.1) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Add patch (directly over the source...), to work with kernels > 3.0.0,
+    by Paul Martin at http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=628919#15.
+    (Closes: #628919)
+  * Fix readline build-depends from "libreadline5-dev | libreadline-dev" to
+    libreadline-gplv2-dev because chrony is GPLv2 only.  (Closes: #634447)
+  * Update copyright file to say that chrony is GPLv2 only. (Closes: #637526)
+
+ -- Ana Beatriz Guerrero Lopez <ana@debian.org>  Fri, 12 Aug 2011 12:32:26 +0200
+
+chrony (1.24-3) unstable; urgency=high
+
+  * Applied (modifed) patch from Gregor Herrmann.
+
+    Closes: #593145: fails to configure on installation
+    Closes: #552162: chrony incorrectly thinks that it has failed to
+    (re)start
+    Closes: #592930: invoke-rc.d: initscript chrony, action "start" failed.
+
+ -- John G. Hasler <jhasler@debian.org>  Tue, 14 Sep 2010 10:06:47 -0500
+
+chrony (1.24-2) unstable; urgency=low
+
+  * Fixed regression that caused default CHRONY_IOC_ lines to
+    vanish from io_linux.h thereby breaking hppa and ia64.
+
+    Closes: #588930: FTBFS [ia64,hppa]: "I don't know the values of the
+    _IOC_* constants on your architecture"
+
+  * $remote_fs was added in 1.24-1.  Depending on networking is neither
+    necessary nor desireable.
+
+    Closes: #590888: Dependencies on init.d script insuficcient
+
+  * Still need to rewrite scripts.
+
+ -- John G. Hasler <jhasler@newsguy.com>  Fri, 30 Jul 2010 20:32:55 -0500
+
+chrony (1.24-1) unstable; urgency=low
+
+  * New upstream release.  The scripts will be rewritten and many more bugs
+    taken care of in -2.  Right now I want to get 1.24 out there.
+
+  * Applied patch from Petter Reinholdtsen to init.d
+
+    Closes: #541806: misses syslog dependency in LSB headers
+
+  * Chrony cannot be linked to libreadline6 because it is GPLv2 only.
+
+    Closes: #553739 replacing libreadline5-dev build dependency with
+    libreadline-dev
+
+  * "configure" rewritten upstream, eliminating "+=".
+
+    Closes: #573036: RTC support disabled (due to Bashism in configure line 293)
+
+  * Removed "install-info" from scripts.
+
+    Closes: #568703: dpkg warnings
+
+  * client.c has been rewritten upstream.
+
+    Closes: #573032
+
+  * Fixed typos.
+
+    Closes: #434629: 'man chrony', 'cronyc', 'cronyd' typos: "parateters" x 2,
+    "priviliges"
+
+  * Added debian/source/format containing "1.0".
+
+ -- John G. Hasler <jhasler@newsguy.com>  Tue, 22 Jun 2010 16:01:29 -0500
+
+chrony (1.23-7) unstable; urgency=high
+
+  * Applied patches from upstream to fix remote DOS:
+
+    CVE-2010-0292 Don't reply to invalid cmdmon packets
+
+    CVE-2010-0293 Limit client log memory size
+
+    CVE-2010-0294 Limit rate of syslog messages
+
+ -- John G. Hasler <jhasler@newsguy.com>  Tue, 02 Feb 2010 19:37:50 -0600
+
+chrony (1.23-6) unstable; urgency=low
+
+  * Commented out rtcfile directive in chrony.conf because it can cause
+    lockups with certain combinations of motherboard and kernel (this is
+    a known kernel bug).
+
+    Closes: #508298: chronyd unreachable and does not work (clock drifts)
+
+  * Chrony no longer uses the ppp/ip-up.d and ppp/ip-up.d files and the new
+    init.d file won't hang if chronyc hangs.
+
+    Closes: #448481: /etc/ppp/ip-up.d/chrony doesn't work when bindaddress is set.
+
+  * Cannot reproduce on current version on amd64.
+
+    Closes: #412961: error in tracking report (on amd64?)
+
+ -- John Hasler <jhasler@debian.org>  Wed, 10 Dec 2008 14:16:37 -0600
+
+chrony (1.23-5) unstable; urgency=low
+
+  * Replaced background kill with 'timelimit' in initscript.
+
+    Closes: #505094: chrony: kills random netstat processes
+
+  * Added 'Recommends: udev (>= 0.124-1)'
+
+    Closes: #497113: /dev/rtc renamed to /dev/rtc0 with linux-image-2.6-*/2.6.26+15
+
+  * Had previously applied patch from Nathanael Nerode to fix configure
+    bug but forgot to close the bug.
+
+    Closes: #392273: Recursive dependency disease: chrony shouldn't depend on ncurses
+
+ -- John Hasler <jhasler@debian.org>  Sun, 09 Nov 2008 20:19:22 -0600
+
+chrony (1.23-4) unstable; urgency=low
+
+  * Fixed dependency of init script on Pppconfig ip-up.d script by moving
+    those lines into the init script.
+
+  * Added checks to try to make sure that Chronyd is really, really running.
+    Changed Netstat call to use -n, added code to kill it if it hangs.
+    Added code to kill Chronyc if it can't contact Chronyd.
+    Discussed the HPET/rtc problem in NEWS.Debian.
+
+    Closes: #504000: init script hangs for a while might break upgrade
+
+  * Added missing initialization to create_instance() in ntp_core.c.
+    This was why UTI_NormaliseTimeval() was being called with huge
+    values at times.
+
+  * See comment on #195620 in 1.21z-6 below.  If you know of more LP64
+    bugs reopen #348412 with a patch.
+
+    Closes: #348412: chronyc not LP64 compliant
+
+  * Added comment about sources being discarded to chrony.conf as suggested
+    by Andreas Hübner in  #268289.
+
+  * This is normal behavior.
+
+    Closes: #287060: trimrtc takes 40 seconds to take effect
+
+ -- John Hasler <jhasler@debian.org>  Thu, 06 Nov 2008 10:38:58 -0600
+
+chrony (1.23-3) unstable; urgency=high
+
+  * Rewrote UTI_NormaliseTimeval()in util.c to use divide/remainder
+    instead of loops at the suggestion of Gabor Gombas.  This prevents the
+    problem of the loop running until the sun goes out when the function
+    is called with a very large value for tv_usec on 64-bit architectures.
+    Also fixed some other spots where the same loop was being used.
+
+    Closes: #474294 Goes into endless loop
+    Closes: #447011 chronyd stalls with 100% CPU usage
+
+    I still don't know why the function is being called with such a
+    large value, however.
+
+  * Changed default servers in chrony,conf to Debian servers.
+
+    Closes: #434483: chrony: Should use NTP servers in Debian pool
+
+ -- John Hasler <jhasler@debian.org>  Sat, 26 Apr 2008 11:47:44 -0500
+
+chrony (1.23-2) experimental; urgency=low
+
+  * Added default IOC's to io_linux.h.
+    Closes: #477043: chrony_1.23-1(ia64/experimental): FTBFS: IOC
+    constants unknown on ia64
+    Closes: #476963: chrony_1.23-1(hppa/experimental): FTBFS: "I don't
+    know the values of the _IOC_* constants for your architecture"
+
+ -- John Hasler <jhasler@debian.org>  Sun, 20 Apr 2008 13:29:29 -0500
+
+chrony (1.23-1) experimental; urgency=low
+
+  * New upstream release
+    This is 1.23 with Debian patches applied (including some for LP64).
+    I'm uploading this to Experimental to get it tested on x86_64 to see
+    if  #474294 is fixed.
+
+ -- John Hasler <jhasler@debian.org>  Sat, 19 Apr 2008 14:49:15 -0500
+
+chrony (1.21z-6) unstable; urgency=low
+
+  * Applied patches from Eric Lammerts <eric@lammerts.org> and Goswin von
+    Brederlow <brederlo@informatik.uni-tuebingen.de> to cast the value
+    returned by ntohl to int32_t and so cause correct sign-extension near
+    line 1655 in client.c.  Also fixed similar bugs in the same area.  I'm
+    not sure this entirely fixes the chronyc number display problem,
+    though.  I've not closed #348412 here because chrony is still not
+    fully LP64 compliant.
+    Closes: #195620: Strange "System time : xxx seconds slow of
+    NTP time" output
+
+  * Replaced addrfilt.c with addrfilt.c from upstream git repository.
+    This fixes the recursive structure definition problems.
+
+  * Replaced 'route' with 'netstat -r' in the initscript.
+
+  * Applied patch for configure script from Nathanael Nerode
+    <neroden@gcc.gnu.org> to delete the superfluous "lncurses" at line
+    327.
+    Closes: #392273: Recursive dependency disease: chrony shouldn't depend
+    on ncurses
+
+  * Added test to reject servers claiming stratum less than 1 in
+    ntp_core.c "Test 7".  Bill Unruh <unruh@physics.ubc.ca> has run across
+    a server that sometimes claims to be stratum 0, which causes
+    considerable confusion.
+
+ -- John Hasler <jhasler@debian.org>  Fri, 16 Feb 2007 17:47:40 -0600
+
+chrony (1.21z-5) unstable; urgency=high
+
+  * Applied postinst patch from Lionel Elie Mamane to test for the
+    existence of old .keys and .conf files before renaming them.
+    Closes: #397759: fails to configure: mv: cannot stat `/etc/chrony/chrony.keys.1.21-2':
+    No such file or directory
+
+  * Added burst command to /etc/ppp/ip-up.d/chrony to give chronyd a kick in the butt.
+    Shouldn't need that, though.
+    Initscript now calls /etc/ppp/ip-up.d/chrony if a default route exists.
+    Closes: #397739: Not connecting to sources after reboot - dialup
+
+ -- John Hasler <jhasler@debian.org>  Sun, 26 Nov 2006 08:07:20 -0600
+
+chrony (1.21z-4) unstable; urgency=low
+
+  * Added test for /usr/bin/mail to postinst.
+    Closes: #386651: chrony: Requires /usr/bin/mail but doesn't depend on it
+    Closes: #390280: chrony: missing dependency on mail
+
+  * Added LSB headers to initscript
+
+  * Corrected erroneous use of 'dpkg --compare-version' in preinst and postinst.
+    Closes: #386733: fails to configure (bad upgrade check)
+
+  * Added rm to postinst to remove keyfile possibly left by a failed install.
+    Closes: #390278: usage of tempfile /etc/chrony/chrony.keys is doubtful
+
+ -- John Hasler <jhasler@debian.org>  Sat,  7 Oct 2006 13:39:49 -0500
+
+chrony (1.21z-3) unstable; urgency=low
+
+  * Changed upstream version number from 1.21 to 1.21z to satisfy Debian
+    archive software.
+
+  * Replaced impure chrony_1.21.orig.tar.gz.
+    Closes: #340030: chrony: Tarball is impure
+
+  * Now Provides, Conflicts, Replaces time-daemon
+    Closes: #330839: time-daemon pseudopackage
+
+  * Corrected typos.
+    Closes: #321121: chrony: typo in 'Conflicts:' field: s/ntpsimple/ntp-simple/ and s/ntprefclock/ntp-refclock/
+
+  * Rewrote postinst and postrm to use ucf.  Wrote preinst to protect chrony.conf from dpkg.
+    Closes: #351332: chrony: conffile change prompt prevents smooth upgrade from sarge to etch
+
+  * Deleted last few lines of chrony.conf as they no longer apply.
+
+  * Deleted .arch-ids from contrib and examples.
+
+  * Fixed typo in chronyc.1
+    Closes: #349871: chrony: typo in chrnoyc.1 results in missing word
+
+  * Corrected references in man pages.
+    Closes: #345034: chrony: man pages refer to wrong sections
+
+  * Added "allow 172.16/12" to chrony.conf.
+    Closes: #252952: chrony: default allow should also have 172.16/12
+
+  * Channged server lines in chrony.conf to follow ntp.org current recommendation.
+    Closes: #243534: chrony: new pool.ntp.org setup doesn't work well
+
+  * Fixed FSF address in debian/copyright.
+
+ -- John Hasler <jhasler@debian.org>  Fri,  1 Sep 2006 10:52:52 -0500
+
+chrony (1.21-2) unstable; urgency=high
+
+  * Patched io_linux.h to add missing architectures.
+    Closes: #339764: chrony - FTBFS: #error "I don't know the values of the
+    _IOC_* constants for your architecture"
+
+  * Fixed brown-bag error in rules.
+    Closes: #339853: /usr/sbin/chronyd is missing
+
+ -- John Hasler <jhasler@debian.org>  Sat, 19 Nov 2005 10:12:49 -0600
+
+chrony (1.21-1) unstable; urgency=low
+
+  * New upstream release
+    Closes: #328292: New version of chrony avalaible
+    Closes: #301592: Fails to read RTC and floods logfiles
+
+  * Enabled RTC as upstream has installed a work-around for the HPET bug.
+
+  * Switched to libreadline5.
+    Closes: #326379: please rebuild with libreadline5-dev as build dependency
+
+  * Patched addrfilt.c to fix gcc 4.0 build problem.
+    Closes: #298709: chrony: FTBFS (amd64/gcc-4.0): array type has incomplete element type
+
+  * There are lots more minor things to fix but I'm uploading now to close
+    the serious bugs.  I'll upload another version with some improvements
+    in a few weeks.
+
+ -- John Hasler <jhasler@debian.org>  Tue, 15 Nov 2005 18:39:49 -0600
+
+chrony (1.20-8) unstable; urgency=high
+
+  * Added test for /usr/bin/mail in postinst.
+    Closes: #307061: Install failure: Cannot configure on system without mailx
+    I consider this bug serious because it can cause installation to fail
+    and so I want to get the fix into Sarge.
+
+  * Fixed typo in chrony.conf, replaced '/etc/init.d/chrony restart'
+    with 'invoke-rc.d chrony restart'.
+    Closes: #305090: Typo in chrony.conf, should mention invoke-rc.d
+
+  * Added README.Debian explaining that rtc is off by default.
+
+ -- John Hasler <jhasler@debian.org>  Sat, 30 Apr 2005 18:47:30 -0500
+
+chrony (1.20-7) unstable; urgency=low
+
+  * Added info-4 to debian/rules.
+    Closes: #287142: chrony: Can't find chrony.info-4
+
+  * Corrected "See Also" section in chrony man page.  Now mentions
+    chronyc(1), chronyd(8), and chrony.conf(5).
+    Closes: #287444: chrony.1.gz: SEE ALSO on man page has wrong section.
+
+  * Edited chrony.conf to disable rtc by default and explain why:
+    on some systems that use genrtc or the HPET real-time clock it
+    fails and causes chronyd to fill up the log.  The failure is
+    probably due to a kernel bug, bug the logging should be
+    throttled.
+
+  * Added more explanatory comments at the servers directive in
+    chrony.conf.
+
+  * The postinst script now sends a message to root saying where the
+    password is, whether Chrony is assuming UTC or local time,
+    that rtc updating is disabled, why, and how to change it.
+
+  * Added missing '#' to
+    "Can't tell how your clock is set: assuming local time."
+    in postinst.
+
+ -- John Hasler <jhasler@debian.org>  Tue, 12 Apr 2005 17:59:13 -0500
+
+chrony (1.20-6) unstable; urgency=low
+
+  * Fixed error in chrony.conf where the non-existent 'online' directive
+    was mentioned.
+    Closes: #257235 misleading instructions in chrony.conf
+
+  * Patched Makefile.in to generate faq.html.
+    Closes: #265936 /usr/share/doc/chrony/faq.txt.gz: how to read?
+
+ -- John Hasler <jhasler@debian.org>  Sat,  4 Dec 2004 17:47:31 -0600
+
+chrony (1.20-5) unstable; urgency=low
+
+  * Put pool.ntp.org servers in chrony.conf as defaults.
+
+  * Fixed erroneous references to chronyd(1) in some man pages.
+    Closes: #241746 SEE ALSO chronyd(1) should be (8)
+
+  * I got a new motherboard and can no longer reproduce this.
+    If you can please reopen the bug.
+    Closes: #223518 Rtc stuff is broken
+
+  * Edited chrony.conf(5).
+    Closes:  #241745 many more features have been added
+
+  * Edited chrony.conf to add logchange and mailonchange and to
+    enable rtc by default.
+    Closes: #226644 /etc/chrony/chrony.conf: rtc; not all options are noted in conf file
+
+  * Fixed upstream: see NEWS.
+    Closes: #124089 mistake in the chrony manual
+    Closes: #177366: trailing blank on log lines
+    Closes: #195618 failure to use /dev/misc/rtc floods logfiles
+    Closes: #53066 "acquisitionport" directive and doc fixes [patch]
+    Closes: #100880 RFE: don't use /proc when uname(2) will do
+    Closes: #163470: different bindaddresses for ntp port and control port
+    Closes: #200174: Chrony breaks under Kernel 2.5 (two bugs)
+
+ -- John Hasler <jhasler@debian.org>  Sat, 10 Apr 2004 22:00:00 -0500
+
+chrony (1.20-4) unstable; urgency=low
+
+  * Added '#include <asm/types>' to rtc_linux.c to fix Alpha build problem.
+    Also removed spinlock stuff from configure.
+
+ -- John Hasler <jhasler@debian.org>  Fri, 26 Dec 2003 21:00:00 -0600
+
+chrony (1.20-3) unstable; urgency=low
+
+  * Removed all inclusions of kernel headers.
+    Hopefully Chrony will now build on m68k.
+
+ -- John Hasler <jhasler@debian.org>  Tue, 23 Dec 2003 19:00:00 -0600
+
+chrony (1.20-2) unstable; urgency=low
+
+  * Removed spinlock.h and mc146818.h from rtc_linux.c.  linux/rtc.h and
+    RTC_UIE=0x10 provide everything needed now.
+    Closes: #223134 FTBFS: Errors in kernel headers
+
+  * However, rtc is now broken (and appears to have been broken for some time)
+    on 440BX chipsets with 2.4 kernels.
+
+ -- John Hasler <jhasler@debian.org>  Fri, 12 Dec 2003 13:00:00 -0600
+
+chrony (1.20-1) unstable; urgency=low
+
+  * New upstream release.
+
+  * Frank Otto's patch to sys_linux.c, function guess_hz_and_shift_hz now
+    incorporated upstream.
+    Closes: #198557 Fatal error: chronyd can't determine hz for kernel with HZ=200
+
+  * Security and 64 bit patches are now incorporated upstream
+    along with most non-i386 architecture patches.
+
+  * Put correct links in /usr/share/doc/chrony/timeservers.
+    Closes: #189686 /usr/share/doc/timeservers links are broken
+
+  * Put correct links in chrony.conf.
+    Closes: #210886 bad link in chrony.conf
+
+  * Put missing newlines in apm and chrony.keys.
+    Closes: #211604 Build-warning: some files misses final newline
+
+  * Removed conflict with ntpdate.
+
+ -- John Hasler <jhasler@debian.org>  Tue, 7 Oct 2003 22:00:00 -0500
+
+chrony (1.19-10) unstable; urgency=low
+
+  * Put linux/linkage.h ahead of linux/spinlock.h as I meant to in
+    the first place.
+
+ -- John Hasler <john@dhh.gt.org>  Sun, 13 Jul 2003 7:00:00 -0500
+
+chrony (1.19-9) unstable; urgency=low
+
+  * Added "#include <linux/linkage.h>" to rtc_linux.c to fix mips
+    build failure.
+    Closes: #200165 chrony doesn't build on mips and mipsel
+
+ -- John Hasler <john@dhh.gt.org>  Sat, 12 Jul 2003 10:00:00 -0500
+
+chrony (1.19-8) unstable; urgency=low
+
+  * Added bison to build-depends because of addition of getdate.y
+
+ -- John Hasler <john@dhh.gt.org>  Tue, 3 Jun 2003 10:00:00 -0500
+
+chrony (1.19-7) unstable; urgency=high
+
+  * Closes: #186498 chronyc hangs if no chronyd is running
+    Added test for running daemon to ip-{up|down} scripts.
+    Disabled trimrtc for ALPHA
+    Closes: #195615 GPL violation - generated file without source
+  * Added a copy of getdate.y to source.
+
+ -- John Hasler <john@dhh.gt.org>  Sun, 1 Jun 2003 7:00:00 -0500
+
+chrony (1.19-6) unstable; urgency=low
+
+  * Closes: #179842 "CROAK" redefined
+    Added '#undef CROAK' before CROAK redefiniton in pktlength.h,
+    added '-DALPHA' to 'alpha' condition in configure, added
+    'ifdef ALPHA' around CROAK redefinition.
+  * Replaced many signed and unsigned longs as well as some ints,
+    shorts, and chars with stdint.h types in candm.h, md5.h, ntp.h,
+    clientlog.h, and ntp_io.c.  This should fix all 64-bit problems.
+
+ -- John Hasler <john@dhh.gt.org>  Fri, 14 Mar 2003 19:00:00 -0600
+
+chrony (1.19-5) unstable; urgency=high
+
+  * Closes: #184065 Assertion `sizeof(NTP_int32) == 4' failed on alpha
+    Fixed several spots where the author assumed that a long is 32 bits.
+    There are many more misuses of long as well as several of short and
+    char but I think I got the only ones likely to cause trouble.
+
+ -- John Hasler <john@dhh.gt.org>  Fri, 14 Mar 2003 11:00:00 -0600
+
+chrony (1.19-4) unstable; urgency=low
+
+  * Closes: #179538 FTBFS: missing build-depends on makeinfo
+    Added texinfo to build-depends.
+  * CLoses: #179508: chrony(c|d) show wrong version numbers
+    Removed spurious version.h.
+
+ -- John Hasler <john@dhh.gt.org>  Sun, 2 Feb 2003 19:00:00 -0600
+
+chrony (1.19-3) unstable; urgency=low
+
+  * Updated author's address in copyright file.
+  * Closes:  #163446 patch, that scripts can handle all commandkeys
+    Applied debugged patch.
+  * Closes: #107863 doesn't know about APM
+    Put apm script in debian/ and added rules to copy it to
+    etc/apm/event.d as instructed by the apmd maintainer.
+
+ -- John Hasler <john@dhh.gt.org>  Fri, 31 Jan 2003 18:00:00 -0600
+
+chrony (1.19-2) unstable; urgency=low
+
+  * Closes: #100879 unnecessary dependency on libm
+    Applied patch from Zack Weinberg <zack@codesourcery.com>
+  * Closes: #124091 the force-reload command of /etc/init.d/chrony should
+    use the -r option.
+    Added -r option.
+
+ -- John Hasler <john@dhh.gt.org>  Wed, 29 Jan 2003 10:00:00 -0600
+
+chrony (1.19-1) unstable; urgency=low
+
+  * New upstream release.
+  * Closes: #178338 New upstream version fixes crashes caused by adjtimex
+    failure
+  * Closes: #178101 /etc/ppp/ip-{up,down}.d/chrony installed with
+    incorrect permissions
+    This bug was previously reported and fixed in 18-1
+  * Closes: #176130 got an error when I use ppp_on_boot
+    Changed 'update-rc.d chrony defaults 83' to
+    'update-rc.d chrony defaults 14' in init.d so that chrony
+    will come up before ppp.
+  * Added code to postinst to read /etc/default/rcS and
+    set rtconutc appropriately in chrony.conf.
+  * Rewrote password generator in postinst.
+  * Closes: #100879 unnecessary dependency on libm
+    I don't know why this wasn't closed months ago.
+  * Closes: #103447 typo in "/etc/init.d/chrony"
+  * Closes: #124087 problems with /etc/init.d/chrony
+    Fixed script.
+  * Closes: #161350 /etc/ppp/ip-down.d/chrony cat unnecessary
+    Fixed scripts.
+  * Closes: #113840 ntp has been split - add conflicts?
+    Added ntp-simple and ntp-refclock to conflicts.
+
+ -- John Hasler <john@dhh.gt.org>  Sun, 26 Jan 2003 15:00:00 -0600
+
+chrony (1.18-2) unstable; urgency=low
+
+  * Corrects error in changelog which resulted
+    in uploads being erroneously classified as NMUs.
+  * Closes: #138142, #104774, #142670, #105344, #101039
+  * Closes: #162427, #56756, #98951, #99799, #139633
+  * Closes: #163469, #163408, #167416
+
+ -- John Hasler <john@dhh.gt.org>  Sun, 3 Nov 2002 20:00:00 -0600
+
+chrony (1.18-1) unstable; urgency=low
+
+  * New upstream release.
+  * Closes: #138142 new upstream release
+  * Added Mark Brown's Alpha and PowerPC patch.
+  * Closes: #104774 hppa build failure
+    Applied patch.
+  * Closes: #142670 compilation errors on sparc
+    Applied patch.
+  * Closes: #105344 ip-{up, down}.d/chrony not executable
+    Fixed debian/rules.
+  * Closes: #101039 does not run on Alpha
+    Fixed by above mentioned Mark Brown patch.
+  * Closes: #162427 description should mention NTP
+    Fixed description.
+  * Closes: #56756 README.debian should caution about hwclock
+    Fixed README.debian.
+  * Closes: #98951 no chrony.keys file installed
+    Not reproducible, probable user error.
+  * Closes: #99799 logs world readable
+    Added umask 022 to log script.
+  * Closes: #139633 documentation error
+    Added rtconutc to chrony.conf.
+  * Closes: #163469 no default case in init.d script
+    Corrected typo.
+  * Closes: #163408 PIDFILE wrongly defined in ip-{up,down}
+    No chrony script uses any such variable.
+  * Closes: #167416 needs Build-Depends: libreadline4-dev
+
+ --  <john@dhh.gt.org>  Sun, 3 Nov 2002 10:00:00 -0600
+
+chrony (1.14-7) unstable; urgency=medium
+
+  * Changed rtc_linux.c to not include linux/mc146818rtc.h
+    when building for sparc, because Moshe Zadka says this
+    will allow chrony to build there.
+  * Closes: #142670
+
+ --  <jhasler@debian.org>  Wed, 17 Apr 2002 17:00:00 -0500
+
+chrony (1.14-6) unstable; urgency=low
+
+  * Changed architecture back to 'any'.
+  * Applied portability patch from LaMont Jones.
+  * Closes: #104774
+
+ --  <jhasler@debian.org>  Mon, 1 Apr 2002 21:00:00 -0600
+
+chrony (1.14-5) unstable; urgency=low
+
+  * Changed architecture from 'any' to 'i386 sparc'.
+    Neither I nor the author can test on anything but i386.  If
+    you want chrony on anything else send me a tested patch.
+  * Closes: #101039
+  * Closes: #104774
+
+ --  <john@dhh.gt.org>  Fri, 28 Dec 2001 20:10:00 -0600
+
+chrony (1.14-4) unstable; urgency=low
+
+  * Fixed bug in man pages.
+  * Closes: #95134
+
+ --  <john@dhh.gt.org>  Tue, 24 Apr 2001 20:10:00 -0500
+
+chrony (1.14-3) unstable; urgency=low
+
+  * Replaced <linux/spinlock.h> in rtc_linux.c with
+    typedef int spinlock_t as suggested by Paul Slootman.
+  * Put #define CROAK(message) assert(0) in pktlength.h
+    to fix Alpha build problem.
+  * Closes: #86991
+
+ --  <john@dhh.gt.org>  Sat, 24 Feb 2001 22:45:00 -0600
+
+chrony (1.14-2) unstable; urgency=low
+
+   * Closes: #84597
+
+ --  <john@dhh.gt.org>  Sat, 3 Feb 2001 21:25:00 -0600
+
+chrony (1.14-1) unstable; urgency=low
+
+   * New upstream release.
+   * Fixed more sprintfs.
+   * Closes: #50793, #52570, #48216, #65209, #62924, #70377, #61485, #76661
+
+ --  <john@dhh.gt.org>  Mon, 20 Nov 2000 20:25:00 -0600
+
+chrony (1.10-3) unstable; urgency=low
+
+   * Patched cron,weekly script with (corrected) patch
+     from Rene H. Larsen <renehl@post1.tele.dk>.
+   * Updated author address in copyright file.
+   * Compiled with egcs.
+   * Closes: #41885, #41551
+
+ --  <john@dhh.gt.org>  Sun, 25 July 1999 12:14:00 -0500
+
+chrony (1.10-2) unstable; urgency=low
+
+   * Patched rtc_linux.c with patch for SPARC from
+     bmc@visi.net.
+
+ --  <john@dhh.gt.org>  Mon, 17 May 1999 22:30:00 -0500
+
+chrony (1.10-1) unstable; urgency=low
+
+   * New upstream release.
+   * Upstream version number is 1.1.  Debian version
+     number is 1.10 because previous upstream number
+     was 1.02.
+
+ --  <john@dhh.gt.org>  Wed, 12 May 1999 20:30:00 -0500
+
+chrony (1.02-7) unstable; urgency=low
+
+   * Changed configure to permit building on non-Intel.
+
+ --  <john@dhh.gt.org>  Wed, 5 May 1999 18:00:00 -0500
+
+chrony (1.02-6) unstable; urgency=low
+
+   * Fixed postrm bug.
+
+ --  <john@dhh.gt.org>  Thur, 29 Apr 1999 18:00:00 -0500
+
+chrony (1.02-5) unstable; urgency=low
+
+   * Fixed bugs 34954 and 36921.
+   * Moved to priority extra.
+   * Added README.debian text about rtc.
+
+ --  <john@dhh.gt.org>  Thur, 15 Apr 1999 21:30:00 -0500
+
+chrony (1.02-4) unstable; urgency=low
+
+   * Replaced sprintf's with snprintf's.
+
+ --  <john@dhh.gt.org>  Sun,  28 Feb 1999 16:53:00 -0600
+
+chrony (1.02-3) unstable; urgency=low
+
+   * Fixed bugs in cron.weekly, ip-up.d, and ip-down.d.
+   * Bug 29981 is also fixed.
+
+ --  <john@dhh.gt.org>  Sun,  6 Dec 1998 9:53:00 -0600
+
+chrony (1.02-2) unstable; urgency=low
+
+  * Added cron.weekly.
+  * Changed ip-up.d, ip-down.d, and cron.weekly to read the
+    password from chrony.keys.
+  * Added code to postinst to generate a random password and
+    put it in chrony.keys.
+
+ --  <john@dhh.gt.org>  Thur,  3 Dec 1998 19:00:08 -0600
+
+chrony (1.02-1) unstable; urgency=low
+
+  * Initial Release.
+
+ --  <john@dhh.gt.org>  Fri,  6 Nov 1998 23:00:08 -0600

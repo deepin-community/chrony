@@ -1,0 +1,41 @@
+#!/bin/sh
+# Upstream makes use of “clknetsim” to test how well “chronyd” controls the
+# system clocks in various conditions. Due to “clknetsim” not being available
+# in Debian, let’s use autopkgtest facility to build it in a container and
+# test “chronyd” from there.
+
+set -e
+
+testdir="$PWD/test/simulation"
+clknetsim_ver=153a8af
+clknetsim_src=https://github.com/mlichvar/clknetsim/archive/"$clknetsim_ver"/clknetsim-"$clknetsim_ver".tar.gz
+clknetsim_archive=$(basename "$clknetsim_src")
+
+export CLKNETSIM_PATH="$AUTOPKGTEST_TMP"
+
+# Always use the same seed to get deterministic results
+export CLKNETSIM_RANDOM_SEED=24505
+
+DEB_HOST_MULTIARCH=$(dpkg-architecture -qDEB_HOST_MULTIARCH)
+
+# The simulation tests are only supported on Linux.
+dpkg-architecture -ilinux-any || exit 77
+
+prepare_clknetsim() {
+    # This symbolic link is necessary to prevent clknetsim from FTBFS.
+    ln -s /usr/include/"$DEB_HOST_MULTIARCH"/sys/time.h /usr/include/sys/
+
+    wget -P "$CLKNETSIM_PATH" "$clknetsim_src" 2>&1 || exit 77
+    tar -xvzf "$CLKNETSIM_PATH"/"$clknetsim_archive" \
+        -C "$CLKNETSIM_PATH" --strip-components=1 2>&1 || exit 77
+
+    if [ ! -x "$CLKNETSIM_PATH/clknetsim" ] && [ ! -e "$CLKNETSIM_PATH/clknetsim.so" ]; then
+        make -C "$CLKNETSIM_PATH" 2>&1
+    fi
+}
+
+run_test() {
+    cd "$testdir" && ./run -i 20 -m 2
+}
+
+prepare_clknetsim && run_test

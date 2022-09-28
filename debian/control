@@ -1,0 +1,54 @@
+Source: chrony
+Section: net
+Priority: optional
+Maintainer: Vincent Blut <vincent.debian@free.fr>
+Standards-Version: 4.6.0
+Build-Depends: asciidoctor,
+               bison,
+               debhelper-compat (= 13),
+               dh-apparmor,
+               gnutls-bin <!nocheck>,
+               iproute2 [linux-any] <!nocheck>,
+               libcap-dev [linux-any],
+               libedit-dev,
+               libgnutls28-dev,
+               libseccomp-dev (>= 2.4.3-1~) [amd64 arm64 armel armhf hppa i386 mips mipsel mips64el powerpc powerpcspe ppc64 ppc64el riscv64 s390x x32],
+               nettle-dev,
+               pkg-config,
+               pps-tools [linux-any],
+               procps <!nocheck>
+Homepage: https://chrony.tuxfamily.org
+Vcs-Git: https://salsa.debian.org/debian/chrony.git -b debian/latest
+Vcs-Browser: https://salsa.debian.org/debian/chrony
+Rules-Requires-Root: no
+
+Package: chrony
+Architecture: linux-any
+Pre-Depends: ${misc:Pre-Depends}
+Depends: adduser,
+         iproute2 [linux-any],
+         tzdata,
+         ucf,
+         ${misc:Depends},
+         ${shlibs:Depends}
+Suggests: dnsutils,
+          networkd-dispatcher
+Breaks: network-manager (<< 1.20.0-1~)
+Conflicts: time-daemon
+Provides: time-daemon
+Replaces: time-daemon
+Description: Versatile implementation of the Network Time Protocol
+ It consists of a pair of programs:
+ .
+ chronyd:  This is a daemon which runs in background on the system.
+ It obtains measurements (e.g. via the network) of the system's offset
+ relative to other systems and adjusts the system time accordingly. For
+ isolated systems, the user can periodically enter the correct time by
+ hand (using 'chronyc'). In either case 'chronyd' determines the rate
+ at which the computer gains or loses time, and compensates for this.
+ Chronyd implements the NTP protocol and can act as either a client or
+ a server.
+ .
+ chronyc: This is a command-line driven control and monitoring program.
+ An administrator can use this to fine-tune various parameters within
+ the daemon, add or delete servers etc whilst the daemon is running.
