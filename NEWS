@@ -1,3 +1,74 @@
+New in version 4.4
+==================
+
+Enhancements
+------------
+* Add support for AES-GCM-SIV with Nettle >= 3.9 to shorten NTS
+  cookies to avoid some length-specific blocking of NTP on Internet
+* Add support for multiple refclocks using extpps option on one PHC
+* Add maxpoll option to hwtimestamp directive to improve PHC tracking
+  with low packet rates
+* Add hwtstimeout directive to configure timeout for late timestamps
+* Handle late hardware transmit timestamps of NTP requests on all sockets
+* Handle mismatched 32/64-bit time_t in SOCK refclock samples
+* Improve source replacement
+* Log important changes made by command requests (chronyc)
+* Refresh address of NTP sources periodically
+* Request nanosecond kernel RX timestamping on FreeBSD
+* Set DSCP for IPv6 packets
+* Shorten NTS-KE retry interval when network is down
+* Update seccomp filter for musl
+* Warn if loading keys from file with unexpected permissions
+* Warn if source selection fails or falseticker is detected
+* Add selectopts command to modify source-specific selection options
+* Add timestamp sources to serverstats report and make its fields 64-bit
+* Add -e option to chronyc to indicate end of response
+
+New in version 4.3
+==================
+
+Enhancements
+------------
+* Add local option to refclock directive to stabilise system clock
+  with more stable free-running clock (e.g. TCXO, OCXO)
+* Add maxdelayquant option to server/pool/peer directive to replace
+  maxdelaydevratio filter with long-term quantile-based filtering
+* Add selection option to log directive
+* Allow external PPS in PHC refclock without configurable pin
+* Don't accept first interleaved response to minimise error in delay
+* Don't use arc4random on Linux to avoid server performance loss
+* Improve filter option to better handle missing NTP samples
+* Improve stability with hardware timestamping and PHC refclock
+* Update seccomp filter
+
+Bug fixes
+---------
+* Fix waitsync command to reconnect when not getting response
+
+New in version 4.2
+==================
+
+Enhancements
+------------
+* Add support for NTPv4 extension field improving synchronisation
+  stability and resolution of root delay and dispersion (experimental)
+* Add support for NTP over PTP (experimental)
+* Add support for AES-CMAC and hash functions in GnuTLS
+* Improve server interleaved mode to be more reliable and support
+  multiple clients behind NAT
+* Update seccomp filter
+* Add statistics about interleaved mode to serverstats report
+
+Bug fixes
+---------
+* Fix RTC support with 64-bit time_t on 32-bit Linux
+* Fix seccomp filter to work correctly with bind*device directives
+* Suppress kernel adjustments of system clock (dosynctodr) on illumos
+
+Other changes
+-------------
+* Switch Solaris support to illumos
+
 New in version 4.1
 ==================
 

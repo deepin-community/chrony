@@ -40,6 +40,7 @@
 #include "array.h"
 #include "logging.h"
 #include "privops.h"
+#include "ptp.h"
 #include "util.h"
 
 #define INVALID_SOCK_FD (-4)
@@ -58,10 +59,16 @@ struct Message {
   union sockaddr_all name;
   struct iovec iov;
   /* Buffer of sufficient length for all expected messages */
-  union {
-    NTP_Packet ntp_msg;
-    CMD_Request cmd_request;
-    CMD_Reply cmd_reply;
+  struct {
+    /* Extra space for Ethernet, IPv4/IPv6, and UDP headers in
+       timestamped messages received from the Linux error queue */
+    uint8_t l234_headers[64];
+    union {
+      NTP_Packet ntp_msg;
+      PTP_NtpMessage ptp_msg;
+      CMD_Request cmd_request;
+      CMD_Reply cmd_reply;
+    } msg;
   } msg_buf;
   /* Aligned buffer for control messages */
   struct cmsghdr cmsg_buf[CMSG_BUF_SIZE / sizeof (struct cmsghdr)];
@@ -498,6 +505,8 @@ bind_unix_address(int sock_fd, const char *addr, int flags)
 {
   union sockaddr_all saddr;
 
+  memset(&saddr, 0, sizeof (saddr));
+
   if (snprintf(saddr.un.sun_path, sizeof (saddr.un.sun_path), "%s", addr) >=
       sizeof (saddr.un.sun_path)) {
     DEBUG_LOG("Unix socket path %s too long", addr);
@@ -529,6 +538,8 @@ static int
 connect_unix_address(int sock_fd, const char *addr)
 {
   union sockaddr_all saddr;
+
+  memset(&saddr, 0, sizeof (saddr));
 
   if (snprintf(saddr.un.sun_path, sizeof (saddr.un.sun_path), "%s", addr) >=
       sizeof (saddr.un.sun_path)) {
@@ -855,6 +866,11 @@ process_header(struct msghdr *msg, int msg_length, int sock_fd, int flags,
 #endif
 #ifdef SCM_TIMESTAMPNS
     else if (match_cmsg(cmsg, SOL_SOCKET, SCM_TIMESTAMPNS, sizeof (message->timestamp.kernel))) {
+      memcpy(&message->timestamp.kernel, CMSG_DATA(cmsg), sizeof (message->timestamp.kernel));
+    }
+#endif
+#ifdef SCM_REALTIME
+    else if (match_cmsg(cmsg, SOL_SOCKET, SCM_REALTIME, sizeof (message->timestamp.kernel))) {
       memcpy(&message->timestamp.kernel, CMSG_DATA(cmsg), sizeof (message->timestamp.kernel));
     }
 #endif
@@ -1375,8 +1391,15 @@ SCK_EnableKernelRxTimestamping(int sock_fd)
     return 1;
 #endif
 #ifdef SO_TIMESTAMP
-  if (SCK_SetIntOption(sock_fd, SOL_SOCKET, SO_TIMESTAMP, 1))
+  if (SCK_SetIntOption(sock_fd, SOL_SOCKET, SO_TIMESTAMP, 1)) {
+#if defined(SO_TS_CLOCK) && defined(SO_TS_REALTIME)
+    /* We don't care about the return value - we'll get either a
+       SCM_REALTIME (if we succeded) or a SCM_TIMESTAMP (if we failed) */
+    if (!SCK_SetIntOption(sock_fd, SOL_SOCKET, SO_TS_CLOCK, SO_TS_REALTIME))
+      ;
+#endif
     return 1;
+  }
 #endif
 
   return 0;

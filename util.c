@@ -3,7 +3,7 @@
 
  **********************************************************************
  * Copyright (C) Richard P. Curnow  1997-2003
- * Copyright (C) Miroslav Lichvar  2009, 2012-2020
+ * Copyright (C) Miroslav Lichvar  2009, 2012-2023
  * 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of version 2 of the GNU General Public License as
@@ -123,7 +123,7 @@ UTI_DoubleToTimeval(double a, struct timeval *b)
 
   b->tv_sec = a;
   frac_part = 1.0e6 * (a - b->tv_sec);
-  b->tv_usec = frac_part > 0 ? frac_part + 0.5 : frac_part - 0.5;
+  b->tv_usec = round(frac_part);
   UTI_NormaliseTimeval(b);
 }
 
@@ -400,7 +400,7 @@ UTI_IPToRefid(const IPAddr *ip)
       return ip->addr.in4;
     case IPADDR_INET6:
       if (MD5_hash < 0)
-        MD5_hash = HSH_GetHashId(HSH_MD5);
+        MD5_hash = HSH_GetHashId(HSH_MD5_NONCRYPTO);
 
       if (MD5_hash < 0 ||
           HSH_Hash(MD5_hash, (const unsigned char *)ip->addr.in6, sizeof (ip->addr.in6),
@@ -552,6 +552,26 @@ UTI_IPSockAddrToString(const IPSockAddr *sa)
 /* ================================================== */
 
 char *
+UTI_IPSubnetToString(IPAddr *subnet, int bits)
+{
+  char *result;
+
+  result = NEXT_BUFFER;
+
+  if (subnet->family == IPADDR_UNSPEC)
+    snprintf(result, BUFFER_LENGTH, "%s", "any address");
+  else if ((subnet->family == IPADDR_INET4 && bits == 32) ||
+           (subnet->family == IPADDR_INET6 && bits == 128))
+    snprintf(result, BUFFER_LENGTH, "%s", UTI_IPToString(subnet));
+  else
+    snprintf(result, BUFFER_LENGTH, "%s/%d", UTI_IPToString(subnet), bits);
+
+  return result;
+}
+
+/* ================================================== */
+
+char *
 UTI_TimeToLogForm(time_t t)
 {
   struct tm *stm;
@@ -625,6 +645,43 @@ UTI_DoubleToNtp32(double x)
     r = 0;
   } else {
     x *= 65536.0;
+    r = x;
+
+    /* Round up */
+    if (r < x)
+      r++;
+  }
+
+  return htonl(r);
+}
+
+/* ================================================== */
+
+double
+UTI_Ntp32f28ToDouble(NTP_int32 x)
+{
+  uint32_t r = ntohl(x);
+
+  /* Maximum value is special */
+  if (r == 0xffffffff)
+    return MAX_NTP_INT32;
+
+  return r / (double)(1U << 28);
+}
+
+/* ================================================== */
+
+NTP_int32
+UTI_DoubleToNtp32f28(double x)
+{
+  NTP_int32 r;
+
+  if (x >= 4294967295.0 / (1U << 28)) {
+    r = 0xffffffff;
+  } else if (x <= 0.0) {
+    r = 0;
+  } else {
+    x *= 1U << 28;
     r = x;
 
     /* Round up */
@@ -751,6 +808,16 @@ UTI_Ntp64ToTimespec(const NTP_int64 *src, struct timespec *dest)
 
 /* ================================================== */
 
+double
+UTI_DiffNtp64ToDouble(const NTP_int64 *a, const NTP_int64 *b)
+{
+  /* Don't convert to timespec to allow any epoch */
+  return (int32_t)(ntohl(a->hi) - ntohl(b->hi)) +
+         ((double)ntohl(a->lo) - (double)ntohl(b->lo)) / (1.0e9 * NSEC_PER_NTP64);
+}
+
+/* ================================================== */
+
 /* Maximum offset between two sane times */
 #define MAX_OFFSET 4294967296.0
 
@@ -838,6 +905,25 @@ UTI_TimespecHostToNetwork(const struct timespec *src, Timespec *dest)
   dest->tv_sec_high = htonl(TV_NOHIGHSEC);
 #endif
   dest->tv_sec_low = htonl(src->tv_sec);
+}
+
+/* ================================================== */
+
+uint64_t
+UTI_Integer64NetworkToHost(Integer64 i)
+{
+  return (uint64_t)ntohl(i.high) << 32 | ntohl(i.low);
+}
+
+/* ================================================== */
+
+Integer64
+UTI_Integer64HostToNetwork(uint64_t i)
+{
+  Integer64 r;
+  r.high = htonl(i >> 32);
+  r.low = htonl(i);
+  return r;
 }
 
 /* ================================================== */
@@ -1181,6 +1267,40 @@ UTI_CheckDirPermissions(const char *path, mode_t perm, uid_t uid, gid_t gid)
 
 /* ================================================== */
 
+int
+UTI_CheckFilePermissions(const char *path, mode_t perm)
+{
+  mode_t extra_perm;
+  struct stat buf;
+
+  if (stat(path, &buf) < 0 || !S_ISREG(buf.st_mode)) {
+    /* Not considered an error */
+    return 1;
+  }
+
+  extra_perm = (buf.st_mode & 0777) & ~perm;
+  if (extra_perm != 0) {
+    LOG(LOGS_WARN, "%s permissions on %s", extra_perm & 0006 ?
+        (extra_perm & 0004 ? "World-readable" : "World-writable") : "Wrong", path);
+    return 0;
+  }
+
+  return 1;
+}
+
+/* ================================================== */
+
+void
+UTI_CheckReadOnlyAccess(const char *path)
+{
+  if (access(path, R_OK) != 0 && errno != ENOENT)
+    LOG(LOGS_WARN, "Missing read access to %s : %s", path, strerror(errno));
+  if (access(path, W_OK) == 0)
+    LOG(LOGS_WARN, "Having write access to %s", path);
+}
+
+/* ================================================== */
+
 static int
 join_path(const char *basedir, const char *name, const char *suffix,
           char *buffer, size_t length, LOG_Severity severity)
@@ -1355,29 +1475,32 @@ UTI_DropRoot(uid_t uid, gid_t gid)
 
 #define DEV_URANDOM "/dev/urandom"
 
+static FILE *urandom_file = NULL;
+
 void
 UTI_GetRandomBytesUrandom(void *buf, unsigned int len)
 {
-  static FILE *f = NULL;
-
-  if (!f)
-    f = UTI_OpenFile(NULL, DEV_URANDOM, NULL, 'R', 0);
-  if (fread(buf, 1, len, f) != len)
+  if (!urandom_file)
+    urandom_file = UTI_OpenFile(NULL, DEV_URANDOM, NULL, 'R', 0);
+  if (fread(buf, 1, len, urandom_file) != len)
     LOG_FATAL("Can't read from %s", DEV_URANDOM);
 }
 
 /* ================================================== */
 
 #ifdef HAVE_GETRANDOM
+
+static unsigned int getrandom_buf_available = 0;
+
 static void
 get_random_bytes_getrandom(char *buf, unsigned int len)
 {
   static char rand_buf[256];
-  static unsigned int available = 0, disabled = 0;
+  static unsigned int disabled = 0;
   unsigned int i;
 
   for (i = 0; i < len; i++) {
-    if (!available) {
+    if (getrandom_buf_available == 0) {
       if (disabled)
         break;
 
@@ -1386,10 +1509,10 @@ get_random_bytes_getrandom(char *buf, unsigned int len)
         break;
       }
 
-      available = sizeof (rand_buf);
+      getrandom_buf_available = sizeof (rand_buf);
     }
 
-    buf[i] = rand_buf[--available];
+    buf[i] = rand_buf[--getrandom_buf_available];
   }
 
   if (i < len)
@@ -1408,6 +1531,20 @@ UTI_GetRandomBytes(void *buf, unsigned int len)
   get_random_bytes_getrandom(buf, len);
 #else
   UTI_GetRandomBytesUrandom(buf, len);
+#endif
+}
+
+/* ================================================== */
+
+void
+UTI_ResetGetRandomFunctions(void)
+{
+  if (urandom_file) {
+    fclose(urandom_file);
+    urandom_file = NULL;
+  }
+#ifdef HAVE_GETRANDOM
+  getrandom_buf_available = 0;
 #endif
 }
 

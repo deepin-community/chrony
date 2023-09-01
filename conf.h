@@ -44,6 +44,8 @@ extern void CNF_ParseLine(const char *filename, int number, char *line);
 
 extern void CNF_CreateDirs(uid_t uid, gid_t gid);
 
+extern void CNF_CheckReadOnlyAccess(void);
+
 extern void CNF_AddInitSources(void);
 extern void CNF_AddSources(void);
 extern void CNF_AddBroadcasts(void);
@@ -58,6 +60,7 @@ extern char *CNF_GetLogDir(void);
 extern char *CNF_GetDumpDir(void);
 extern int CNF_GetLogBanner(void);
 extern int CNF_GetLogMeasurements(int *raw);
+extern int CNF_GetLogSelection(void);
 extern int CNF_GetLogStatistics(void);
 extern int CNF_GetLogTracking(void);
 extern int CNF_GetLogRtc(void);
@@ -134,12 +137,14 @@ typedef enum {
   CNF_HWTS_RXFILTER_ANY,
   CNF_HWTS_RXFILTER_NONE,
   CNF_HWTS_RXFILTER_NTP,
+  CNF_HWTS_RXFILTER_PTP,
   CNF_HWTS_RXFILTER_ALL,
 } CNF_HwTs_RxFilter;
 
 typedef struct {
   char *name;
   int minpoll;
+  int maxpoll;
   int min_samples;
   int max_samples;
   int nocrossts;
@@ -150,6 +155,11 @@ typedef struct {
 } CNF_HwTsInterface;
 
 extern int CNF_GetHwTsInterface(unsigned int index, CNF_HwTsInterface **iface);
+extern double CNF_GetHwTsTimeout(void);
+
+extern int CNF_GetPtpPort(void);
+
+extern int CNF_GetRefresh(void);
 
 extern char *CNF_GetNtsDumpDir(void);
 extern char *CNF_GetNtsNtpServer(void);

@@ -42,6 +42,7 @@ for command in \
 	"reselect" \
 	"reselectdist 1e-3" \
 	"reset sources" \
+	"selectopts $server -noselect +trust +prefer +require" \
 	"smoothtime reset" \
 	"smoothtime activate" \
 ; do
@@ -95,12 +96,13 @@ TX timestamping : (Daemon|Kernel)
 RX timestamping : (Daemon|Kernel)
 Total TX        : [0-9]+
 Total RX        : [0-9]+
-Total valid RX  : [0-9]+$" || test_fail
+Total valid RX  : [0-9]+
+Total good RX   : [0-9]+$" || test_fail
 
 run_chronyc "selectdata" || test_fail
 check_chronyc_output "^S Name/IP Address        Auth COpts EOpts Last Score     Interval  Leap
 =======================================================================
-M 127\.0\.0\.1                 N ----- -----    0   1\.0    \+0ns    \+0ns  \?$" || test_fail
+s 127\.0\.0\.1                 N -PTR- -PTR-    0   1\.0    \+0ns    \+0ns  \?$" || test_fail
 
 run_chronyc "serverstats" || test_fail
 check_chronyc_output "^NTP packets received       : [0-9]+
@@ -110,7 +112,16 @@ Command packets dropped    : 0
 Client log records dropped : 0
 NTS-KE connections accepted: 0
 NTS-KE connections dropped : 0
-Authenticated NTP packets  : 0$" || test_fail
+Authenticated NTP packets  : 0
+Interleaved NTP packets    : 0
+NTP timestamps held        : 0
+NTP timestamp span         : 0
+NTP daemon RX timestamps   : 0
+NTP daemon TX timestamps   : [0-9]+
+NTP kernel RX timestamps   : [0-9]+
+NTP kernel TX timestamps   : 0
+NTP hardware RX timestamps : 0
+NTP hardware TX timestamps : 0$"|| test_fail
 
 run_chronyc "manual on" || test_fail
 check_chronyc_output "^200 OK$" || test_fail
