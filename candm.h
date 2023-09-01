@@ -109,7 +109,8 @@
 #define REQ_SELECT_DATA 69
 #define REQ_RELOAD_SOURCES 70
 #define REQ_DOFFSET2 71
-#define N_REQUEST_TYPES 72
+#define REQ_MODIFY_SELECTOPTS 72
+#define N_REQUEST_TYPES 73
 
 /* Structure used to exchange timespecs independent of time_t size */
 typedef struct {
@@ -120,6 +121,12 @@ typedef struct {
 
 /* This is used in tv_sec_high for 32-bit timestamps */
 #define TV_NOHIGHSEC 0x7fffffff
+
+/* Structure for 64-bit integers (not requiring 64-bit alignment) */
+typedef struct {
+  uint32_t high;
+  uint32_t low;
+} Integer64;
 
 /* 32-bit floating-point format consisting of 7-bit signed exponent
    and 25-bit signed coefficient without hidden bit.
@@ -270,6 +277,7 @@ typedef struct {
 #define REQ_ADDSRC_BURST 0x100
 #define REQ_ADDSRC_NTS 0x200
 #define REQ_ADDSRC_COPY 0x400
+#define REQ_ADDSRC_EF_EXP1 0x800
 
 typedef struct {
   uint32_t type;
@@ -295,7 +303,8 @@ typedef struct {
   uint32_t flags;
   int32_t filter_length;
   uint32_t cert_set;
-  uint32_t reserved[2];
+  Float max_delay_quant;
+  uint32_t reserved[1];
   int32_t EOR;
 } REQ_NTP_Source;
 
@@ -368,6 +377,15 @@ typedef struct {
   uint32_t index;
   int32_t EOR;
 } REQ_SelectData;
+
+/* Mask and options reuse the REQ_ADDSRC flags */
+typedef struct {
+  IPAddr address;
+  uint32_t ref_id;
+  uint32_t mask;
+  uint32_t options;
+  int32_t EOR;
+} REQ_Modify_SelectOpts;
 
 /* ================================================== */
 
@@ -475,6 +493,7 @@ typedef struct {
     REQ_NTPSourceName ntp_source_name;
     REQ_AuthData auth_data;
     REQ_SelectData select_data;
+    REQ_Modify_SelectOpts modify_select_opts;
   } data; /* Command specific parameters */
 
   /* Padding used to prevent traffic amplification.  It only defines the
@@ -516,7 +535,9 @@ typedef struct {
 #define RPY_CLIENT_ACCESSES_BY_INDEX3 21
 #define RPY_SERVER_STATS2 22
 #define RPY_SELECT_DATA 23
-#define N_REPLY_TYPES 24
+#define RPY_SERVER_STATS3 24
+#define RPY_SERVER_STATS4 25
+#define N_REPLY_TYPES 26
 
 /* Status codes */
 #define STT_SUCCESS 0
@@ -529,8 +550,7 @@ typedef struct {
 #define STT_BADSUBNET 7
 #define STT_ACCESSALLOWED 8
 #define STT_ACCESSDENIED 9
-/* Deprecated */
-#define STT_NOHOSTACCESS 10
+#define STT_NOHOSTACCESS 10 /* Deprecated */
 #define STT_SOURCEALREADYKNOWN 11
 #define STT_TOOMANYSOURCES 12
 #define STT_NORTC 13
@@ -652,14 +672,24 @@ typedef struct {
 } RPY_ClientAccessesByIndex;
 
 typedef struct {
-  uint32_t ntp_hits;
-  uint32_t nke_hits;
-  uint32_t cmd_hits;
-  uint32_t ntp_drops;
-  uint32_t nke_drops;
-  uint32_t cmd_drops;
-  uint32_t log_drops;
-  uint32_t ntp_auth_hits;
+  Integer64 ntp_hits;
+  Integer64 nke_hits;
+  Integer64 cmd_hits;
+  Integer64 ntp_drops;
+  Integer64 nke_drops;
+  Integer64 cmd_drops;
+  Integer64 log_drops;
+  Integer64 ntp_auth_hits;
+  Integer64 ntp_interleaved_hits;
+  Integer64 ntp_timestamps;
+  Integer64 ntp_span_seconds;
+  Integer64 ntp_daemon_rx_timestamps;
+  Integer64 ntp_daemon_tx_timestamps;
+  Integer64 ntp_kernel_rx_timestamps;
+  Integer64 ntp_kernel_tx_timestamps;
+  Integer64 ntp_hw_rx_timestamps;
+  Integer64 ntp_hw_tx_timestamps;
+  Integer64 reserved[4];
   int32_t EOR;
 } RPY_ServerStats;
 
@@ -729,7 +759,8 @@ typedef struct {
   uint32_t total_tx_count;
   uint32_t total_rx_count;
   uint32_t total_valid_count;
-  uint32_t reserved[4];
+  uint32_t total_good_count;
+  uint32_t reserved[3];
   int32_t EOR;
 } RPY_NTPData;
 

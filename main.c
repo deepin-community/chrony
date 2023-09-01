@@ -76,11 +76,18 @@ static REF_Mode ref_mode = REF_ModeNormal;
 static void
 do_platform_checks(void)
 {
+  struct timespec ts;
+
   /* Require at least 32-bit integers, two's complement representation and
      the usual implementation of conversion of unsigned integers */
   assert(sizeof (int) >= 4);
   assert(-1 == ~0);
   assert((int32_t)4294967295U == (int32_t)-1);
+
+  /* Require time_t and tv_nsec in timespec to be signed */
+  ts.tv_sec = -1;
+  ts.tv_nsec = -1;
+  assert(ts.tv_sec < 0 && ts.tv_nsec < 0);
 }
 
 /* ================================================== */
@@ -141,6 +148,8 @@ MAI_CleanupAndExit(void)
   HSH_Finalise();
   LOG_Finalise();
 
+  UTI_ResetGetRandomFunctions();
+
   exit(exit_status);
 }
 
@@ -157,6 +166,8 @@ signal_cleanup(int x)
 static void
 quit_timeout(void *arg)
 {
+  LOG(LOGS_INFO, "Timeout reached");
+
   /* Return with non-zero status if the clock is not synchronised */
   exit_status = REF_GetOurStratum() >= NTP_MAX_STRATUM;
   SCH_QuitProgram();
@@ -320,6 +331,9 @@ go_daemon(void)
     char message[1024];
     int r;
 
+    /* Don't exit before the 'parent' */
+    waitpid(pid, NULL, 0);
+
     close(pipefd[1]);
     r = read(pipefd[0], message, sizeof (message));
     if (r) {
@@ -342,7 +356,9 @@ go_daemon(void)
     if (pid < 0) {
       LOG_FATAL("fork() failed : %s", strerror(errno));
     } else if (pid > 0) {
-      exit(0); /* In the 'parent' */
+      /* In the 'parent' */
+      close(pipefd[1]);
+      exit(0);
     } else {
       /* In the child we want to leave running as the daemon */
 
@@ -626,8 +642,12 @@ int main
   }
 
   /* Drop root privileges if the specified user has a non-zero UID */
-  if (!geteuid() && (pw->pw_uid || pw->pw_gid))
+  if (!geteuid() && (pw->pw_uid || pw->pw_gid)) {
     SYS_DropRoot(pw->pw_uid, pw->pw_gid, SYS_MAIN_PROCESS);
+
+    /* Warn if missing read access or having write access to keys */
+    CNF_CheckReadOnlyAccess();
+  }
 
   if (!geteuid())
     LOG(LOGS_WARN, "Running with root privileges");

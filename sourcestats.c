@@ -80,7 +80,7 @@ static LOG_FileID logfileid;
 
 struct SST_Stats_Record {
 
-  /* Reference ID and IP address of source, used for logging to statistics log */
+  /* Reference ID and IP address (NULL if not an NTP source) */
   uint32_t refid;
   IPAddr *ip_addr;
 
@@ -211,8 +211,8 @@ SST_CreateInstance(uint32_t refid, IPAddr *addr, int min_samples, int max_sample
   SST_Stats inst;
   inst = MallocNew(struct SST_Stats_Record);
 
-  inst->min_samples = min_samples;
-  inst->max_samples = max_samples;
+  inst->max_samples = max_samples > 0 ? CLAMP(1, max_samples, MAX_SAMPLES) : MAX_SAMPLES;
+  inst->min_samples = CLAMP(1, min_samples, inst->max_samples);
   inst->fixed_min_delay = min_delay;
   inst->fixed_asymmetry = asymmetry;
 
@@ -698,7 +698,8 @@ SST_GetSelectionData(SST_Stats inst, struct timespec *now,
 
   /* If maxsamples is too small to have a successful regression, enable the
      selection as a special case for a fast update/print-once reference mode */
-  if (!*select_ok && inst->n_samples < 3 && inst->n_samples == inst->max_samples) {
+  if (!*select_ok && inst->n_samples < MIN_SAMPLES_FOR_REGRESS &&
+      inst->n_samples == inst->max_samples) {
     *std_dev = CNF_GetMaxJitter();
     *select_ok = 1;
   }
@@ -779,6 +780,22 @@ SST_SlewSamples(SST_Stats inst, struct timespec *when, double dfreq, double doff
 
 /* ================================================== */
 
+void
+SST_CorrectOffset(SST_Stats inst, double doffset)
+{
+  int i;
+
+  if (!inst->n_samples)
+    return;
+
+  for (i = -inst->runs_samples; i < inst->n_samples; i++)
+    inst->offsets[get_runsbuf_index(inst, i)] += doffset;
+
+  inst->estimated_offset += doffset;
+}
+
+/* ================================================== */
+
 void 
 SST_AddDispersion(SST_Stats inst, double dispersion)
 {
@@ -798,7 +815,7 @@ SST_PredictOffset(SST_Stats inst, struct timespec *when)
 {
   double elapsed;
   
-  if (inst->n_samples < 3) {
+  if (inst->n_samples < MIN_SAMPLES_FOR_REGRESS) {
     /* We don't have any useful statistics, and presumably the poll
        interval is minimal.  We can't do any useful prediction other
        than use the latest sample or zero if we don't have any samples */
@@ -914,6 +931,7 @@ SST_LoadFromFile(SST_Stats inst, FILE *in)
 
     /* Make sure the samples are sane and they are in order */
     if (!UTI_IsTimeOffsetSane(&inst->sample_times[i], -inst->offsets[i]) ||
+        UTI_CompareTimespecs(&now, &inst->sample_times[i]) < 0 ||
         !(fabs(inst->peer_delays[i]) < 1.0e6 && fabs(inst->peer_dispersions[i]) < 1.0e6 &&
           fabs(inst->root_delays[i]) < 1.0e6 && fabs(inst->root_dispersions[i]) < 1.0e6) ||
         (i > 0 && UTI_CompareTimespecs(&inst->sample_times[i],
@@ -946,9 +964,10 @@ SST_DoSourceReport(SST_Stats inst, RPT_SourceReport *report, struct timespec *no
     report->latest_meas = inst->offsets[i];
     report->latest_meas_err = 0.5*inst->root_delays[j] + inst->root_dispersions[j];
 
-    /* Align the sample time to reduce the leak of the receive timestamp */
+    /* Align the sample time to reduce the leak of the NTP receive timestamp */
     last_sample_time = inst->sample_times[i];
-    last_sample_time.tv_nsec = 0;
+    if (inst->ip_addr)
+      last_sample_time.tv_nsec = 0;
     report->latest_meas_ago = UTI_DiffTimespecsToDouble(now, &last_sample_time);
   } else {
     report->latest_meas_ago = (uint32_t)-1;
@@ -965,6 +984,14 @@ int
 SST_Samples(SST_Stats inst)
 {
   return inst->n_samples;
+}
+
+/* ================================================== */
+
+int
+SST_GetMinSamples(SST_Stats inst)
+{
+  return inst->min_samples;
 }
 
 /* ================================================== */

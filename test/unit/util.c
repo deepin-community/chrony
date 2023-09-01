@@ -34,12 +34,13 @@ test_unit(void)
 {
   struct timespec ts, ts2, ts3, ts4;
   char buf[16], *s, *s2, *words[3];
-  NTP_int64 ntp_ts, ntp_fuzz;
+  NTP_int64 ntp_ts, ntp_ts2, ntp_fuzz;
   NTP_int32 ntp32_ts;
   struct timeval tv;
   double x, y, nan, inf;
   IPAddr ip, ip2, ip3;
   IPSockAddr ip_saddr;
+  Integer64 integer64;
   Timespec tspec;
   Float f;
   int i, j, c;
@@ -113,6 +114,13 @@ test_unit(void)
   TEST_CHECK(ts.tv_sec == 0);
 #endif
   TEST_CHECK(ts.tv_nsec == 999999999);
+
+  ntp_ts.hi = htonl(JAN_1970 - 1);
+  ntp_ts.lo = htonl(0xffffffff);
+  ntp_ts2.hi = htonl(JAN_1970 + 1);
+  ntp_ts2.lo = htonl(0x80000000);
+  TEST_CHECK(fabs(UTI_DiffNtp64ToDouble(&ntp_ts, &ntp_ts2) + 1.5) < 1e-9);
+  TEST_CHECK(fabs(UTI_DiffNtp64ToDouble(&ntp_ts2, &ntp_ts) - 1.5) < 1e-9);
 
   UTI_AddDoubleToTimespec(&ts, 1e-9, &ts);
 #if defined(HAVE_LONG_TIME_T) && NTP_ERA_SPLIT > 0
@@ -463,6 +471,15 @@ test_unit(void)
   s = UTI_IPSockAddrToString(&ip_saddr);
   TEST_CHECK(strcmp(s, "1.2.3.4:12345") == 0);
 
+  ip = ip_saddr.ip_addr;
+  s = UTI_IPSubnetToString(&ip, 10);
+  TEST_CHECK(strcmp(s, "1.2.3.4/10") == 0);
+  s = UTI_IPSubnetToString(&ip, 32);
+  TEST_CHECK(strcmp(s, "1.2.3.4") == 0);
+  ip.family = IPADDR_UNSPEC;
+  s = UTI_IPSubnetToString(&ip, 0);
+  TEST_CHECK(strcmp(s, "any address") == 0);
+
   s = UTI_TimeToLogForm(2000000000);
   TEST_CHECK(strcmp(s, "2033-05-18 03:33:20") == 0);
 
@@ -472,8 +489,8 @@ test_unit(void)
   ts2.tv_nsec = 250000000;
   UTI_AdjustTimespec(&ts, &ts2, &ts3, &x, 2.0, -5.0);
   TEST_CHECK(fabs(x - 6.5) < 1.0e-15);
-  TEST_CHECK(ts3.tv_sec == 10);
-  TEST_CHECK(ts3.tv_nsec == 0);
+  TEST_CHECK((ts3.tv_sec == 10 && ts3.tv_nsec == 0) ||
+             (ts3.tv_sec == 9 && ts3.tv_nsec == 999999999));
 
   for (i = -32; i <= 32; i++) {
     for (j = c = 0; j < 1000; j++) {
@@ -501,9 +518,20 @@ test_unit(void)
   TEST_CHECK(UTI_DoubleToNtp32(65536.0) == htonl(0xffffffff));
   TEST_CHECK(UTI_DoubleToNtp32(65537.0) == htonl(0xffffffff));
 
+  TEST_CHECK(UTI_DoubleToNtp32f28(-1.0) == htonl(0));
+  TEST_CHECK(UTI_DoubleToNtp32f28(0.0) == htonl(0));
+  TEST_CHECK(UTI_DoubleToNtp32f28(1e-9) == htonl(1));
+  TEST_CHECK(UTI_DoubleToNtp32f28(4e-9) == htonl(2));
+  TEST_CHECK(UTI_DoubleToNtp32f28(8.0) == htonl(0x80000000));
+  TEST_CHECK(UTI_DoubleToNtp32f28(16.0) == htonl(0xffffffff));
+  TEST_CHECK(UTI_DoubleToNtp32f28(16.1) == htonl(0xffffffff));
+  TEST_CHECK(UTI_DoubleToNtp32f28(16.1) == htonl(0xffffffff));
+
+  TEST_CHECK(UTI_Ntp32f28ToDouble(htonl(0xffffffff)) >= 65535.999);
   for (i = 0; i < 100000; i++) {
     UTI_GetRandomBytes(&ntp32_ts, sizeof (ntp32_ts));
     TEST_CHECK(UTI_DoubleToNtp32(UTI_Ntp32ToDouble(ntp32_ts)) == ntp32_ts);
+    TEST_CHECK(UTI_DoubleToNtp32f28(UTI_Ntp32f28ToDouble(ntp32_ts)) == ntp32_ts);
   }
 
   ts.tv_nsec = 0;
@@ -537,6 +565,10 @@ test_unit(void)
   TEST_CHECK(tspec.tv_nsec == htonl(ts.tv_nsec));
   UTI_TimespecNetworkToHost(&tspec, &ts2);
   TEST_CHECK(!UTI_CompareTimespecs(&ts, &ts2));
+
+  integer64 = UTI_Integer64HostToNetwork(0x1234567890ABCDEFULL);
+  TEST_CHECK(memcmp(&integer64, "\x12\x34\x56\x78\x90\xab\xcd\xef", 8) == 0);
+  TEST_CHECK(UTI_Integer64NetworkToHost(integer64) == 0x1234567890ABCDEFULL);
 
   TEST_CHECK(UTI_CmacNameToAlgorithm("AES128") == CMC_AES128);
   TEST_CHECK(UTI_CmacNameToAlgorithm("AES256") == CMC_AES256);
@@ -652,6 +684,10 @@ test_unit(void)
     UTI_GetRandomBytesUrandom(buf, j);
     if (j && buf[j - 1] % 2)
       c++;
+    if (random() % 10000 == 0) {
+      UTI_ResetGetRandomFunctions();
+      TEST_CHECK(!urandom_file);
+    }
   }
   TEST_CHECK(c > 46000 && c < 48000);
 
@@ -660,6 +696,12 @@ test_unit(void)
     UTI_GetRandomBytes(buf, j);
     if (j && buf[j - 1] % 2)
       c++;
+    if (random() % 10000 == 0) {
+      UTI_ResetGetRandomFunctions();
+#if HAVE_GETRANDOM
+      TEST_CHECK(getrandom_buf_available == 0);
+#endif
+    }
   }
   TEST_CHECK(c > 46000 && c < 48000);
 
@@ -713,4 +755,6 @@ test_unit(void)
   TEST_CHECK(words[1] == buf + 3);
   TEST_CHECK(strcmp(words[0], "a") == 0);
   TEST_CHECK(strcmp(words[1], "b") == 0);
+
+  HSH_Finalise();
 }

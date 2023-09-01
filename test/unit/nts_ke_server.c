@@ -75,7 +75,8 @@ prepare_request(NKSN_Instance session, int valid)
     TEST_CHECK(NKSN_AddRecord(session, 1, NKE_RECORD_NEXT_PROTOCOL, data, length));
 
   if (index != 4) {
-    data[0] = htons(AEAD_AES_SIV_CMAC_256);
+    data[0] = htons(random() % 2 && SIV_GetKeyLength(AEAD_AES_128_GCM_SIV) > 0 ?
+                    AEAD_AES_128_GCM_SIV : AEAD_AES_SIV_CMAC_256);
     if (index == 5)
       length = 0;
     else if (index == 6)
@@ -138,7 +139,7 @@ test_unit(void)
   NKSN_Instance session;
   NKE_Context context, context2;
   NKE_Cookie cookie;
-  int i, valid, l;
+  int i, j, valid, l;
   uint32_t sum, sum2;
 
   char conf[][100] = {
@@ -199,7 +200,9 @@ test_unit(void)
   save_keys();
 
   for (i = 0, sum = 0; i < MAX_SERVER_KEYS; i++) {
-    sum += server_keys[i].id + server_keys[i].key[0];
+    sum += server_keys[i].id;
+    for (j = 0; j < sizeof (server_keys[i].key); j++)
+      sum += server_keys[i].key[j];
     generate_key(i);
   }
 
@@ -207,7 +210,9 @@ test_unit(void)
   TEST_CHECK(unlink("ntskeys") == 0);
 
   for (i = 0, sum2 = 0; i < MAX_SERVER_KEYS; i++) {
-    sum2 += server_keys[i].id + server_keys[i].key[0];
+    sum2 += server_keys[i].id;
+    for (j = 0; j < sizeof (server_keys[i].key); j++)
+      sum2 += server_keys[i].key[j];
   }
 
   TEST_CHECK(sum == sum2);

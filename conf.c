@@ -115,6 +115,7 @@ static int cmd_port = DEFAULT_CANDM_PORT;
 
 static int raw_measurements = 0;
 static int do_log_measurements = 0;
+static int do_log_selection = 0;
 static int do_log_statistics = 0;
 static int do_log_tracking = 0;
 static int do_log_rtc = 0;
@@ -251,6 +252,9 @@ static char *leapsec_tz = NULL;
 /* Name of the user to which will be dropped root privileges. */
 static char *user;
 
+/* Address refresh interval */
+static int refresh = 1209600; /* 2 weeks */
+
 /* NTS server and client configuration */
 static char *nts_dump_dir = NULL;
 static char *nts_ntp_server = NULL;
@@ -272,6 +276,12 @@ static int no_system_cert = 0;
 
 /* Array of CNF_HwTsInterface */
 static ARR_Instance hwts_interfaces;
+
+/* Timeout for resuming reading from sockets waiting for HW TX timestamp */
+static double hwts_timeout = 0.001;
+
+/* PTP event port (disabled by default) */
+static int ptp_port = 0;
 
 typedef struct {
   NTP_Source_Type type;
@@ -598,6 +608,8 @@ CNF_ParseLine(const char *filename, int number, char *line)
     parse_string(p, &hwclock_file);
   } else if (!strcasecmp(command, "hwtimestamp")) {
     parse_hwtimestamp(p);
+  } else if (!strcasecmp(command, "hwtstimeout")) {
+    parse_double(p, &hwts_timeout);
   } else if (!strcasecmp(command, "include")) {
     parse_include(p);
   } else if (!strcasecmp(command, "initstepslew")) {
@@ -686,11 +698,15 @@ CNF_ParseLine(const char *filename, int number, char *line)
     parse_source(p, command, 1);
   } else if (!strcasecmp(command, "port")) {
     parse_int(p, &ntp_port);
+  } else if (!strcasecmp(command, "ptpport")) {
+    parse_int(p, &ptp_port);
   } else if (!strcasecmp(command, "ratelimit")) {
     parse_ratelimit(p, &ntp_ratelimit_enabled, &ntp_ratelimit_interval,
                     &ntp_ratelimit_burst, &ntp_ratelimit_leak);
   } else if (!strcasecmp(command, "refclock")) {
     parse_refclock(p);
+  } else if (!strcasecmp(command, "refresh")) {
+    parse_int(p, &refresh);
   } else if (!strcasecmp(command, "reselectdist")) {
     parse_double(p, &reselect_distance);
   } else if (!strcasecmp(command, "rtcautotrim")) {
@@ -856,16 +872,16 @@ static void
 parse_refclock(char *line)
 {
   int n, poll, dpoll, filter_length, pps_rate, min_samples, max_samples, sel_options;
-  int max_lock_age, pps_forced, stratum, tai;
+  int local, max_lock_age, pps_forced, sel_option, stratum, tai;
   uint32_t ref_id, lock_ref_id;
   double offset, delay, precision, max_dispersion, pulse_width;
   char *p, *cmd, *name, *param;
-  unsigned char ref[5];
   RefclockParameters *refclock;
 
   poll = 4;
   dpoll = 0;
   filter_length = 64;
+  local = 0;
   pps_forced = 0;
   pps_rate = 0;
   min_samples = SRC_DEFAULT_MINSAMPLES;
@@ -905,13 +921,11 @@ parse_refclock(char *line)
     line = CPS_SplitWord(line);
 
     if (!strcasecmp(cmd, "refid")) {
-      if (sscanf(line, "%4s%n", (char *)ref, &n) != 1)
+      if ((n = CPS_ParseRefid(line, &ref_id)) == 0)
         break;
-      ref_id = (uint32_t)ref[0] << 24 | ref[1] << 16 | ref[2] << 8 | ref[3];
     } else if (!strcasecmp(cmd, "lock")) {
-      if (sscanf(line, "%4s%n", (char *)ref, &n) != 1)
+      if ((n = CPS_ParseRefid(line, &lock_ref_id)) == 0)
         break;
-      lock_ref_id = (uint32_t)ref[0] << 24 | ref[1] << 16 | ref[2] << 8 | ref[3];
     } else if (!strcasecmp(cmd, "poll")) {
       if (sscanf(line, "%d%n", &poll, &n) != 1) {
         break;
@@ -924,6 +938,9 @@ parse_refclock(char *line)
       if (sscanf(line, "%d%n", &filter_length, &n) != 1) {
         break;
       }
+    } else if (!strcasecmp(cmd, "local")) {
+      n = 0;
+      local = 1;
     } else if (!strcasecmp(cmd, "rate")) {
       if (sscanf(line, "%d%n", &pps_rate, &n) != 1)
         break;
@@ -961,18 +978,9 @@ parse_refclock(char *line)
     } else if (!strcasecmp(cmd, "width")) {
       if (sscanf(line, "%lf%n", &pulse_width, &n) != 1)
         break;
-    } else if (!strcasecmp(cmd, "noselect")) {
+    } else if ((sel_option = CPS_GetSelectOption(cmd)) != 0) {
       n = 0;
-      sel_options |= SRC_SELECT_NOSELECT;
-    } else if (!strcasecmp(cmd, "prefer")) {
-      n = 0;
-      sel_options |= SRC_SELECT_PREFER;
-    } else if (!strcasecmp(cmd, "trust")) {
-      n = 0;
-      sel_options |= SRC_SELECT_TRUST;
-    } else if (!strcasecmp(cmd, "require")) {
-      n = 0;
-      sel_options |= SRC_SELECT_REQUIRE;
+      sel_options |= sel_option;
     } else {
       other_parse_error("Invalid refclock option");
       return;
@@ -990,6 +998,7 @@ parse_refclock(char *line)
   refclock->driver_poll = dpoll;
   refclock->poll = poll;
   refclock->filter_length = filter_length;
+  refclock->local = local;
   refclock->pps_forced = pps_forced;
   refclock->pps_rate = pps_rate;
   refclock->min_samples = min_samples;
@@ -1022,6 +1031,8 @@ parse_log(char *line)
         raw_measurements = 1;
       } else if (!strcmp(log_name, "measurements")) {
         do_log_measurements = 1;
+      } else if (!strcmp(log_name, "selection")) {
+        do_log_selection = 1;
       } else if (!strcmp(log_name, "statistics")) {
         do_log_statistics = 1;
       } else if (!strcmp(log_name, "tracking")) {
@@ -1212,100 +1223,18 @@ parse_ntstrustedcerts(char *line)
 static void
 parse_allow_deny(char *line, ARR_Instance restrictions, int allow)
 {
-  char *p;
-  unsigned long a, b, c, d, n;
-  int all = 0;
-  AllowDeny *new_node = NULL;
-  IPAddr ip_addr;
+  int all, subnet_bits;
+  AllowDeny *node;
+  IPAddr ip;
 
-  p = line;
+  if (!CPS_ParseAllowDeny(line, &all, &ip, &subnet_bits))
+    command_parse_error();
 
-  if (!strncmp(p, "all", 3)) {
-    all = 1;
-    p = CPS_SplitWord(line);
-  }
-
-  if (!*p) {
-    /* Empty line applies to all addresses */
-    new_node = (AllowDeny *)ARR_GetNewElement(restrictions);
-    new_node->allow = allow;
-    new_node->all = all;
-    new_node->ip.family = IPADDR_UNSPEC;
-    new_node->subnet_bits = 0;
-  } else {
-    char *slashpos;
-    slashpos = strchr(p, '/');
-    if (slashpos) *slashpos = 0;
-
-    check_number_of_args(p, 1);
-    n = 0;
-    if (UTI_StringToIP(p, &ip_addr) ||
-        (n = sscanf(p, "%lu.%lu.%lu.%lu", &a, &b, &c, &d)) >= 1) {
-      new_node = (AllowDeny *)ARR_GetNewElement(restrictions);
-      new_node->allow = allow;
-      new_node->all = all;
-
-      if (n == 0) {
-        new_node->ip = ip_addr;
-        if (ip_addr.family == IPADDR_INET6)
-          new_node->subnet_bits = 128;
-        else
-          new_node->subnet_bits = 32;
-      } else {
-        new_node->ip.family = IPADDR_INET4;
-
-        a &= 0xff;
-        b &= 0xff;
-        c &= 0xff;
-        d &= 0xff;
-        
-        switch (n) {
-          case 1:
-            new_node->ip.addr.in4 = (a<<24);
-            new_node->subnet_bits = 8;
-            break;
-          case 2:
-            new_node->ip.addr.in4 = (a<<24) | (b<<16);
-            new_node->subnet_bits = 16;
-            break;
-          case 3:
-            new_node->ip.addr.in4 = (a<<24) | (b<<16) | (c<<8);
-            new_node->subnet_bits = 24;
-            break;
-          case 4:
-            new_node->ip.addr.in4 = (a<<24) | (b<<16) | (c<<8) | d;
-            new_node->subnet_bits = 32;
-            break;
-          default:
-            assert(0);
-        }
-      }
-      
-      if (slashpos) {
-        int specified_subnet_bits, n;
-        n = sscanf(slashpos+1, "%d", &specified_subnet_bits);
-        if (n == 1) {
-          new_node->subnet_bits = specified_subnet_bits;
-        } else {
-          command_parse_error();
-        }
-      }
-
-    } else {
-      if (!slashpos && DNS_Name2IPAddress(p, &ip_addr, 1) == DNS_Success) {
-        new_node = (AllowDeny *)ARR_GetNewElement(restrictions);
-        new_node->allow = allow;
-        new_node->all = all;
-        new_node->ip = ip_addr;
-        if (ip_addr.family == IPADDR_INET6)
-          new_node->subnet_bits = 128;
-        else
-          new_node->subnet_bits = 32;
-      } else {
-        command_parse_error();
-      }      
-    }
-  }
+  node = ARR_GetNewElement(restrictions);
+  node->allow = allow;
+  node->all = all;
+  node->ip = ip;
+  node->subnet_bits = subnet_bits;
 }
   
 /* ================================================== */
@@ -1506,8 +1435,8 @@ static void
 parse_hwtimestamp(char *line)
 {
   CNF_HwTsInterface *iface;
+  int n, maxpoll_set = 0;
   char *p, filter[5];
-  int n;
 
   if (!*line) {
     command_parse_error();
@@ -1537,6 +1466,10 @@ parse_hwtimestamp(char *line)
     } else if (!strcasecmp(p, "minpoll")) {
       if (sscanf(line, "%d%n", &iface->minpoll, &n) != 1)
         break;
+    } else if (!strcasecmp(p, "maxpoll")) {
+      if (sscanf(line, "%d%n", &iface->maxpoll, &n) != 1)
+        break;
+      maxpoll_set = 1;
     } else if (!strcasecmp(p, "minsamples")) {
       if (sscanf(line, "%d%n", &iface->min_samples, &n) != 1)
         break;
@@ -1556,6 +1489,8 @@ parse_hwtimestamp(char *line)
         iface->rxfilter = CNF_HWTS_RXFILTER_NONE;
       else if (!strcasecmp(filter, "ntp"))
         iface->rxfilter = CNF_HWTS_RXFILTER_NTP;
+      else if (!strcasecmp(filter, "ptp"))
+        iface->rxfilter = CNF_HWTS_RXFILTER_PTP;
       else if (!strcasecmp(filter, "all"))
         iface->rxfilter = CNF_HWTS_RXFILTER_ALL;
       else
@@ -1570,6 +1505,9 @@ parse_hwtimestamp(char *line)
 
   if (*p)
     command_parse_error();
+
+  if (!maxpoll_set)
+    iface->maxpoll = iface->minpoll + 1;
 }
 
 /* ================================================== */
@@ -1771,6 +1709,8 @@ reload_source_dirs(void)
   new_ids = ARR_GetElements(ntp_source_ids);
   unresolved = 0;
 
+  LOG_SetContext(LOGC_SourceFile);
+
   qsort(new_sources, new_size, sizeof (new_sources[0]), compare_sources);
 
   for (i = j = 0; i < prev_size || j < new_size; ) {
@@ -1805,6 +1745,8 @@ reload_source_dirs(void)
       i++, j++;
     }
   }
+
+  LOG_UnsetContext(LOGC_SourceFile);
 
   for (i = 0; i < prev_size; i++)
     Free(prev_sources[i].params.name);
@@ -1845,6 +1787,19 @@ CNF_CreateDirs(uid_t uid, gid_t gid)
     UTI_CreateDirAndParents(dumpdir, 0750, uid, gid);
   if (nts_dump_dir)
     UTI_CreateDirAndParents(nts_dump_dir, 0750, uid, gid);
+}
+
+/* ================================================== */
+
+void
+CNF_CheckReadOnlyAccess(void)
+{
+  unsigned int i;
+
+  if (keys_file)
+    UTI_CheckReadOnlyAccess(keys_file);
+  for (i = 0; i < ARR_GetSize(nts_server_key_files); i++)
+    UTI_CheckReadOnlyAccess(*(char **)ARR_GetElement(nts_server_key_files, i));
 }
 
 /* ================================================== */
@@ -1995,6 +1950,14 @@ CNF_GetLogMeasurements(int *raw)
 {
   *raw = raw_measurements;
   return do_log_measurements;
+}
+
+/* ================================================== */
+
+int
+CNF_GetLogSelection(void)
+{
+  return do_log_selection;
 }
 
 /* ================================================== */
@@ -2555,6 +2518,30 @@ CNF_GetHwTsInterface(unsigned int index, CNF_HwTsInterface **iface)
 
   *iface = (CNF_HwTsInterface *)ARR_GetElement(hwts_interfaces, index);
   return 1;
+}
+
+/* ================================================== */
+
+double
+CNF_GetHwTsTimeout(void)
+{
+  return hwts_timeout;
+}
+
+/* ================================================== */
+
+int
+CNF_GetPtpPort(void)
+{
+  return ptp_port;
+}
+
+/* ================================================== */
+
+int
+CNF_GetRefresh(void)
+{
+  return refresh;
 }
 
 /* ================================================== */

@@ -1,3 +1,173 @@
+chrony (4.4-1) unstable; urgency=medium
+
+  * Import upstream version 4.4:
+    - Please see /usr/share/doc/chrony/NEWS.gz for the release notes.
+
+  * debian/:
+    - Update links to point to new chrony location.
+
+  * debian/copyright:
+    - Update copyright years.
+
+  * debian/install:
+    - Install the chronyd-restricted systemd unit.
+
+  * debian/patches/:
+    - Add debianize-chronyd-restricted-unit-file.patch.
+
+  * debian/rules:
+    - Do not enable nor start chronyd-restricted.service.
+
+ -- Vincent Blut <vincent.debian@free.fr>  Wed, 09 Aug 2023 17:50:42 +0200
+
+chrony (4.4~pre2-1) experimental; urgency=medium
+
+  * Import upstream version 4.4-pre2:
+    - Please see /usr/share/doc/chrony/NEWS.gz for the release notes.
+
+  * debian/tests/upstream-simulation-test-suite:
+    - Update clknetsim version.
+    - Update clknetsim seed. This prevents the '148-replacement' test from
+    failing.
+
+ -- Vincent Blut <vincent.debian@free.fr>  Wed, 21 Jun 2023 19:12:19 +0200
+
+chrony (4.4~pre1-1) experimental; urgency=medium
+
+  * Merge branch 'debian/unstable' into 'debian/latest'.
+
+  * Import upstream version 4.4-pre1:
+    - Please see /usr/share/doc/chrony/NEWS.gz for the release notes.
+
+  * debian/tests/upstream-simulation-test-suite:
+    - Update clknetsim version.
+
+ -- Vincent Blut <vincent.debian@free.fr>  Wed, 10 May 2023 16:26:48 +0200
+
+chrony (4.3-3) experimental; urgency=medium
+
+  * debian/control:
+    - Depend on tzdata-legacy. right/* timezones have been split into a
+    separate tzdata-legacy package. Since chronyd reads
+    '/usr/share/zoneinfo/right/UTC' to determine when will the next leap second
+    occur we have to depend on this new package. (LP: #2008076)
+
+  * debian/.gitlab-ci.yml:
+    - Run CI on experimental. This is necessary as long as tzdata-legacy is
+    available in experimental only.
+
+  * debian/tests/control:
+    - Let upstream-simulation-test-suite depend on tzdata-legacy.
+
+ -- Vincent Blut <vincent.debian@free.fr>  Mon, 27 Mar 2023 19:57:20 +0200
+
+chrony (4.3-2+deb12u1) unstable; urgency=medium
+
+  * debian/usr.sbin.chronyd:
+    - Modify the AppArmor profile to allow more gpsd socket names. This will
+    avoid the need for users to override the profile to let chronyd consume PPS
+    samples or serial time supplied by gpsd over a Unix-domain socket.
+    Thanks to Ryan Govostes for the report. (Closes: #1034519)
+
+ -- Vincent Blut <vincent.debian@free.fr>  Mon, 08 May 2023 22:05:00 +0200
+
+chrony (4.3-2) unstable; urgency=medium
+
+  * debian/control:
+    - Bump Standards-Version to 4.6.2 (no changes needed).
+
+  * debian/copyright:
+    - Update copyright year for debian/*.
+
+  * debian/.gitlab-ci.yml:
+    - Use the recommended syntax to skip a job.
+
+  * debian/install:
+    - Install the chrony-wait.service systemd unit.
+
+  * debian/postinst:
+    - Ensure that chronyd can read the /etc/chrony/chrony.keys file after
+    dropping root privileges.
+
+  * debian/postrm:
+    - Remove the override for /etc/chrony/chrony.keys when purging chrony.
+
+  * debian/rules:
+    - Do not enable nor start chrony-wait.service for the time being.
+
+  * debian/tests/upstream-simulation-test-suite:
+    - Run each test only once. Running several iterations is no longer
+    relevant since we use a hard coded seed.
+
+  [ Taylor Stearns ]
+  * debian/chrony.conf:
+    - Replace U+2019 with ASCII quote. (MR: !10)
+
+ -- Vincent Blut <vincent.debian@free.fr>  Fri, 27 Jan 2023 22:51:17 +0100
+
+chrony (4.3-1) unstable; urgency=medium
+
+  * Import upstream version 4.3:
+    - Please see /usr/share/doc/chrony/NEWS.gz for the release notes.
+
+  * debian/copyright:
+    - Update copyright years.
+
+  [ Bastian Blank ]
+  * debian/chrony.service:
+    - Let systemd handle directories. (MR: !9)
+
+ -- Vincent Blut <vincent.debian@free.fr>  Wed, 31 Aug 2022 13:32:14 +0200
+
+chrony (4.3~pre1-1) experimental; urgency=medium
+
+  * Import upstream version 4.3-pre1:
+    - Please see /usr/share/doc/chrony/NEWS.gz for the release notes.
+
+  * debian/chrony.lintian-overrides:
+    - Update lintian override syntax.
+
+  * debian/control:
+    - Bump Standards-Version to 4.6.1 (no changes needed).
+
+  * debian/patches/*:
+    - Drop ensure_awk_commands_in_008-ntpera_test_return_an_integer.patch,
+    applied upstream.
+    - Refresh nm-dispatcher-dhcp_Move-server_dir-to-run.patch.
+
+  * debian/tests/upstream-simulation-test-suite:
+    - Update clknetsim version.
+
+ -- Vincent Blut <vincent.debian@free.fr>  Thu, 11 Aug 2022 14:12:25 +0200
+
+chrony (4.2-2) unstable; urgency=medium
+
+  * debian/usr.sbin.chronyd:
+    - Allow reading the chronyd configuration file that timemaster(8)
+    generates. Thanks to Michael Lestinsky for the report! (Closes: #1004745)
+
+ -- Vincent Blut <vincent.debian@free.fr>  Tue, 01 Feb 2022 20:42:35 +0100
+
+chrony (4.2-1) unstable; urgency=medium
+
+  * Import upstream version 4.2:
+    - Please see /usr/share/doc/chrony/NEWS.gz for the release notes.
+
+  * debian/chrony.service:
+    - Adopt upstream service unit hardening options.
+
+  * debian/copyright:
+    - Update copyright years.
+
+  * debian/patches/*:
+    - Drop patches applied upstream.
+    - Add ensure_awk_commands_in_008-ntpera_test_return_an_integer.patch
+
+  * debian/test/upstream-simulation-test-suite:
+    - Update clknetsim version.
+
+ -- Vincent Blut <vincent.debian@free.fr>  Thu, 13 Jan 2022 14:01:35 +0100
+
 chrony (4.1-4) unstable; urgency=medium
 
   * debian/:

@@ -102,6 +102,10 @@ SST_GetTrackingData(SST_Stats inst, struct timespec *ref_time,
 
 extern void SST_SlewSamples(SST_Stats inst, struct timespec *when, double dfreq, double doffset);
 
+/* This routine corrects already accumulated samples to improve the
+   frequency estimate when a new sample is accumulated */
+extern void SST_CorrectOffset(SST_Stats inst, double doffset);
+
 /* This routine is called when an indeterminate offset is introduced
    into the local time. */
 extern void SST_AddDispersion(SST_Stats inst, double dispersion);
@@ -128,6 +132,8 @@ extern void SST_DoSourceReport(SST_Stats inst, RPT_SourceReport *report, struct 
 extern void SST_DoSourcestatsReport(SST_Stats inst, RPT_SourcestatsReport *report, struct timespec *now);
 
 extern int SST_Samples(SST_Stats inst);
+
+extern int SST_GetMinSamples(SST_Stats inst);
 
 extern double SST_GetJitterAsymmetry(SST_Stats inst);
 

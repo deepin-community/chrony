@@ -35,6 +35,7 @@
 
 #if defined(FEAT_PHC) || defined(HAVE_LINUX_TIMESTAMPING)
 #include <linux/ptp_clock.h>
+#include <poll.h>
 #endif
 
 #ifdef FEAT_SCFILTER
@@ -98,21 +99,6 @@ static int have_setoffset;
 static int tick_update_hz;
 
 /* ================================================== */
-
-inline static long
-our_round(double x)
-{
-  long y;
-
-  if (x > 0.0)
-    y = x + 0.5;
-  else
-    y = x - 0.5;
-
-  return y;
-}
-
-/* ================================================== */
 /* Positive means currently fast of true time, i.e. jump backwards */
 
 static int
@@ -149,7 +135,7 @@ set_frequency(double freq_ppm)
   double required_freq;
   int required_delta_tick;
 
-  required_delta_tick = our_round(freq_ppm / dhz);
+  required_delta_tick = round(freq_ppm / dhz);
 
   /* Older kernels (pre-2.6.18) don't apply the frequency offset exactly as
      set by adjtimex() and a scaling constant (that depends on the internal
@@ -503,12 +489,21 @@ SYS_Linux_EnableSystemCallFilter(int level, SYS_ProcessContext context)
 
     /* Process */
     SCMP_SYS(clone),
+#ifdef __NR_clone3
+    SCMP_SYS(clone3),
+#endif
     SCMP_SYS(exit),
     SCMP_SYS(exit_group),
     SCMP_SYS(getpid),
     SCMP_SYS(getrlimit),
     SCMP_SYS(getuid),
     SCMP_SYS(getuid32),
+#ifdef __NR_membarrier
+    SCMP_SYS(membarrier),
+#endif
+#ifdef __NR_rseq
+    SCMP_SYS(rseq),
+#endif
     SCMP_SYS(rt_sigaction),
     SCMP_SYS(rt_sigreturn),
     SCMP_SYS(rt_sigprocmask),
@@ -595,6 +590,7 @@ SYS_Linux_EnableSystemCallFilter(int level, SYS_ProcessContext context)
 #ifdef __NR_ppoll_time64
     SCMP_SYS(ppoll_time64),
 #endif
+    SCMP_SYS(pread64),
     SCMP_SYS(pselect6),
 #ifdef __NR_pselect6_time64
     SCMP_SYS(pselect6_time64),
@@ -607,6 +603,7 @@ SYS_Linux_EnableSystemCallFilter(int level, SYS_ProcessContext context)
     SCMP_SYS(select),
     SCMP_SYS(set_robust_list),
     SCMP_SYS(write),
+    SCMP_SYS(writev),
 
     /* Miscellaneous */
     SCMP_SYS(getrandom),
@@ -641,6 +638,9 @@ SYS_Linux_EnableSystemCallFilter(int level, SYS_ProcessContext context)
     { SOL_IP, IP_PKTINFO }, { SOL_IP, IP_FREEBIND }, { SOL_IP, IP_TOS },
 #ifdef FEAT_IPV6
     { SOL_IPV6, IPV6_V6ONLY }, { SOL_IPV6, IPV6_RECVPKTINFO },
+#ifdef IPV6_TCLASS
+    { SOL_IPV6, IPV6_TCLASS },
+#endif
 #endif
 #ifdef SO_BINDTODEVICE
     { SOL_SOCKET, SO_BINDTODEVICE },
@@ -658,7 +658,7 @@ SYS_Linux_EnableSystemCallFilter(int level, SYS_ProcessContext context)
   const static int fcntls[] = { F_GETFD, F_SETFD, F_GETFL, F_SETFL };
 
   const static unsigned long ioctls[] = {
-    FIONREAD, TCGETS,
+    FIONREAD, TCGETS, TIOCGWINSZ,
 #if defined(FEAT_PHC) || defined(HAVE_LINUX_TIMESTAMPING)
     PTP_EXTTS_REQUEST, PTP_SYS_OFFSET,
 #ifdef PTP_PIN_SETFUNC
@@ -750,10 +750,9 @@ SYS_Linux_EnableSystemCallFilter(int level, SYS_ProcessContext context)
 
     /* Allow selected socket options */
     for (i = 0; i < sizeof (socket_options) / sizeof (*socket_options); i++) {
-      if (seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(setsockopt), 3,
+      if (seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(setsockopt), 2,
                            SCMP_A1(SCMP_CMP_EQ, socket_options[i][0]),
-                           SCMP_A2(SCMP_CMP_EQ, socket_options[i][1]),
-                           SCMP_A4(SCMP_CMP_LE, sizeof (int))) < 0)
+                           SCMP_A2(SCMP_CMP_EQ, socket_options[i][1])))
         goto add_failed;
     }
 
@@ -803,73 +802,25 @@ SYS_Linux_CheckKernelVersion(int req_major, int req_minor)
 
 #if defined(FEAT_PHC) || defined(HAVE_LINUX_TIMESTAMPING)
 
-#define PHC_READINGS 10
-
 static int
-process_phc_readings(struct timespec ts[][3], int n, double precision,
-                     struct timespec *phc_ts, struct timespec *sys_ts, double *err)
+get_phc_readings(int phc_fd, int max_samples, struct timespec ts[][3])
 {
-  double min_delay = 0.0, delays[PTP_MAX_SAMPLES], phc_sum, sys_sum, sys_prec;
-  int i, combined;
-
-  if (n > PTP_MAX_SAMPLES)
-    return 0;
-
-  for (i = 0; i < n; i++) {
-    delays[i] = UTI_DiffTimespecsToDouble(&ts[i][2], &ts[i][0]);
-
-    if (delays[i] < 0.0) {
-      /* Step in the middle of a PHC reading? */
-      DEBUG_LOG("Bad PTP_SYS_OFFSET sample delay=%e", delays[i]);
-      return 0;
-    }
-
-    if (!i || delays[i] < min_delay)
-      min_delay = delays[i];
-  }
-
-  sys_prec = LCL_GetSysPrecisionAsQuantum();
-
-  /* Combine best readings */
-  for (i = combined = 0, phc_sum = sys_sum = 0.0; i < n; i++) {
-    if (delays[i] > min_delay + MAX(sys_prec, precision))
-      continue;
-
-    phc_sum += UTI_DiffTimespecsToDouble(&ts[i][1], &ts[0][1]);
-    sys_sum += UTI_DiffTimespecsToDouble(&ts[i][0], &ts[0][0]) + delays[i] / 2.0;
-    combined++;
-  }
-
-  assert(combined);
-
-  UTI_AddDoubleToTimespec(&ts[0][1], phc_sum / combined, phc_ts);
-  UTI_AddDoubleToTimespec(&ts[0][0], sys_sum / combined, sys_ts);
-  *err = MAX(min_delay / 2.0, precision);
-
-  return 1;
-}
-
-/* ================================================== */
-
-static int
-get_phc_sample(int phc_fd, double precision, struct timespec *phc_ts,
-               struct timespec *sys_ts, double *err)
-{
-  struct timespec ts[PHC_READINGS][3];
   struct ptp_sys_offset sys_off;
   int i;
+
+  max_samples = CLAMP(0, max_samples, PTP_MAX_SAMPLES);
 
   /* Silence valgrind */
   memset(&sys_off, 0, sizeof (sys_off));
 
-  sys_off.n_samples = PHC_READINGS;
+  sys_off.n_samples = max_samples;
 
   if (ioctl(phc_fd, PTP_SYS_OFFSET, &sys_off)) {
     DEBUG_LOG("ioctl(%s) failed : %s", "PTP_SYS_OFFSET", strerror(errno));
     return 0;
   }
 
-  for (i = 0; i < PHC_READINGS; i++) {
+  for (i = 0; i < max_samples; i++) {
     ts[i][0].tv_sec = sys_off.ts[i * 2].sec;
     ts[i][0].tv_nsec = sys_off.ts[i * 2].nsec;
     ts[i][1].tv_sec = sys_off.ts[i * 2 + 1].sec;
@@ -878,31 +829,31 @@ get_phc_sample(int phc_fd, double precision, struct timespec *phc_ts,
     ts[i][2].tv_nsec = sys_off.ts[i * 2 + 2].nsec;
   }
 
-  return process_phc_readings(ts, PHC_READINGS, precision, phc_ts, sys_ts, err);
+  return max_samples;
 }
 
 /* ================================================== */
 
 static int
-get_extended_phc_sample(int phc_fd, double precision, struct timespec *phc_ts,
-                        struct timespec *sys_ts, double *err)
+get_extended_phc_readings(int phc_fd, int max_samples, struct timespec ts[][3])
 {
 #ifdef PTP_SYS_OFFSET_EXTENDED
-  struct timespec ts[PHC_READINGS][3];
   struct ptp_sys_offset_extended sys_off;
   int i;
+
+  max_samples = CLAMP(0, max_samples, PTP_MAX_SAMPLES);
 
   /* Silence valgrind */
   memset(&sys_off, 0, sizeof (sys_off));
 
-  sys_off.n_samples = PHC_READINGS;
+  sys_off.n_samples = max_samples;
 
   if (ioctl(phc_fd, PTP_SYS_OFFSET_EXTENDED, &sys_off)) {
     DEBUG_LOG("ioctl(%s) failed : %s", "PTP_SYS_OFFSET_EXTENDED", strerror(errno));
     return 0;
   }
 
-  for (i = 0; i < PHC_READINGS; i++) {
+  for (i = 0; i < max_samples; i++) {
     ts[i][0].tv_sec = sys_off.ts[i][0].sec;
     ts[i][0].tv_nsec = sys_off.ts[i][0].nsec;
     ts[i][1].tv_sec = sys_off.ts[i][1].sec;
@@ -911,7 +862,7 @@ get_extended_phc_sample(int phc_fd, double precision, struct timespec *phc_ts,
     ts[i][2].tv_nsec = sys_off.ts[i][2].nsec;
   }
 
-  return process_phc_readings(ts, PHC_READINGS, precision, phc_ts, sys_ts, err);
+  return max_samples;
 #else
   return 0;
 #endif
@@ -920,11 +871,13 @@ get_extended_phc_sample(int phc_fd, double precision, struct timespec *phc_ts,
 /* ================================================== */
 
 static int
-get_precise_phc_sample(int phc_fd, double precision, struct timespec *phc_ts,
-		       struct timespec *sys_ts, double *err)
+get_precise_phc_readings(int phc_fd, int max_samples, struct timespec ts[][3])
 {
 #ifdef PTP_SYS_OFFSET_PRECISE
   struct ptp_sys_offset_precise sys_off;
+
+  if (max_samples < 1)
+    return 0;
 
   /* Silence valgrind */
   memset(&sys_off, 0, sizeof (sys_off));
@@ -935,11 +888,11 @@ get_precise_phc_sample(int phc_fd, double precision, struct timespec *phc_ts,
     return 0;
   }
 
-  phc_ts->tv_sec = sys_off.device.sec;
-  phc_ts->tv_nsec = sys_off.device.nsec;
-  sys_ts->tv_sec = sys_off.sys_realtime.sec;
-  sys_ts->tv_nsec = sys_off.sys_realtime.nsec;
-  *err = MAX(LCL_GetSysPrecisionAsQuantum(), precision);
+  ts[0][0].tv_sec = sys_off.sys_realtime.sec;
+  ts[0][0].tv_nsec = sys_off.sys_realtime.nsec;
+  ts[0][1].tv_sec = sys_off.device.sec;
+  ts[0][1].tv_nsec = sys_off.device.nsec;
+  ts[0][2] = ts[0][0];
 
   return 1;
 #else
@@ -983,23 +936,23 @@ SYS_Linux_OpenPHC(const char *path, int phc_index)
 /* ================================================== */
 
 int
-SYS_Linux_GetPHCSample(int fd, int nocrossts, double precision, int *reading_mode,
-                       struct timespec *phc_ts, struct timespec *sys_ts, double *err)
+SYS_Linux_GetPHCReadings(int fd, int nocrossts, int *reading_mode, int max_readings,
+                         struct timespec tss[][3])
 {
-  if ((*reading_mode == 2 || !*reading_mode) && !nocrossts &&
-      get_precise_phc_sample(fd, precision, phc_ts, sys_ts, err)) {
+  int r = 0;
+
+  if ((*reading_mode == 2 || *reading_mode == 0) && !nocrossts &&
+      (r = get_precise_phc_readings(fd, max_readings, tss)) > 0) {
     *reading_mode = 2;
-    return 1;
-  } else if ((*reading_mode == 3 || !*reading_mode) &&
-      get_extended_phc_sample(fd, precision, phc_ts, sys_ts, err)) {
+  } else if ((*reading_mode == 3 || *reading_mode == 0) &&
+             (r = get_extended_phc_readings(fd, max_readings, tss)) > 0) {
     *reading_mode = 3;
-    return 1;
-  } else if ((*reading_mode == 1 || !*reading_mode) &&
-      get_phc_sample(fd, precision, phc_ts, sys_ts, err)) {
+  } else if ((*reading_mode == 1 || *reading_mode == 0) &&
+             (r = get_phc_readings(fd, max_readings, tss)) > 0) {
     *reading_mode = 1;
-    return 1;
   }
-  return 0;
+
+  return r;
 }
 
 /* ================================================== */
@@ -1017,7 +970,7 @@ SYS_Linux_SetPHCExtTimestamping(int fd, int pin, int channel,
   pin_desc.func = enable ? PTP_PF_EXTTS : PTP_PF_NONE;
   pin_desc.chan = channel;
 
-  if (ioctl(fd, PTP_PIN_SETFUNC, &pin_desc)) {
+  if (pin >= 0 && ioctl(fd, PTP_PIN_SETFUNC, &pin_desc)) {
     DEBUG_LOG("ioctl(%s) failed : %s", "PTP_PIN_SETFUNC", strerror(errno));
     return 0;
   }
@@ -1046,6 +999,16 @@ int
 SYS_Linux_ReadPHCExtTimestamp(int fd, struct timespec *phc_ts, int *channel)
 {
   struct ptp_extts_event extts_event;
+  struct pollfd pfd;
+
+  /* Make sure the read will not block in case we have multiple
+     descriptors of the same PHC (O_NONBLOCK does not work) */
+  pfd.fd = fd;
+  pfd.events = POLLIN;
+  if (poll(&pfd, 1, 0) != 1 || pfd.revents != POLLIN) {
+    DEBUG_LOG("Missing PHC extts event");
+    return 0;
+  }
 
   if (read(fd, &extts_event, sizeof (extts_event)) != sizeof (extts_event)) {
     DEBUG_LOG("Could not read PHC extts event");
