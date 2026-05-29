@@ -1,3 +1,9 @@
+chrony (4.4-1+deepin1) unstable; urgency=medium
+
+  * makefile: rebuild everything after configure
+
+ -- jiabowen <jiabowen@uniontech.com>  Fri, 29 May 2026 17:34:34 +0800
+
 chrony (4.4-1) unstable; urgency=medium
 
   * Import upstream version 4.4:
