@@ -1,2 +1,3 @@
+fix-client-v-option.patch
 debianize-chronyd-restricted-unit-file.patch
 nm-dispatcher-dhcp_Move-server_dir-to-run.patch

@@ -1,3 +1,9 @@
+chrony (4.4-1+deepin1) unstable; urgency=medium
+
+  * client: fix -v option to not require argument
+
+ -- jiabowen <jiabowen@uniontech.com>  Fri, 29 May 2026 17:31:37 +0800
+
 chrony (4.4-1) unstable; urgency=medium
 
   * Import upstream version 4.4:

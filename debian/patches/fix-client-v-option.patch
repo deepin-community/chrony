@@ -1,0 +1,13 @@
+Index: repo/client.c
+===================================================================
+--- repo.orig/client.c
++++ repo/client.c
+@@ -3444,7 +3444,7 @@ main(int argc, char **argv)
+   optind = 1;
+ 
+   /* Parse short command-line options */
+-  while ((opt = getopt(argc, argv, "+46acdef:h:mnNp:v")) != -1) {
++  while ((opt = getopt(argc, argv, "+46acdef:h:mnNp:vw")) != -1) {
+     switch (opt) {
+       case '4':
+       case '6':
