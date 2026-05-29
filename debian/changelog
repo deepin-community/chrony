@@ -1,3 +1,12 @@
+chrony (4.4-1+backport1) unstable; urgency=medium
+
+  * Backport upstream fix: client: fix -v option to not require argument.
+    The -v option was incorrectly requiring an argument in the getopt string.
+    This fix removes the colon suffix from the v option in the getopt string.
+    (commit 6d8b237fac2acdbb391799510a17d66c5638ed96)
+
+ -- Sisyphus Backport Bot <bot@deepin.org>  Fri, 29 May 2026 14:47:52 +0800
+
 chrony (4.4-1) unstable; urgency=medium
 
   * Import upstream version 4.4:

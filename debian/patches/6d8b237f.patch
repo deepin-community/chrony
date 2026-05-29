@@ -1,0 +1,21 @@
+Description: client: fix -v option to not require argument
+Author: Miroslav Lichvar <mlichvar@redhat.com>
+Origin: upstream, https://git.tuxfamily.org/chrony/chrony.git
+Bug: https://git.tuxfamily.org/chrony/chrony.git
+Last-Update: 2026-03-09
+Applied-Upstream: 6d8b237fac2acdbb391799510a17d66c5638ed96
+---
+This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
+Index: chrony/client.c
+===================================================================
+--- chrony.orig/client.c
++++ chrony/client.c
+@@ -3656,7 +3656,7 @@ main(int argc, char **argv)
+   optind = 1;
+ 
+   /* Parse short command-line options */
+-  while ((opt = getopt(argc, argv, "+46acdef:h:mnNp:v")) != -1) {
++  while ((opt = getopt(argc, argv, "+46acdef:h:mnNp:v")) != -1) {
+     switch (opt) {
+       case '4':
+       case '6':
