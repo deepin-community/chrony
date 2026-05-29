@@ -1,3 +1,9 @@
+chrony (4.4-1+deepin1) unstable; urgency=medium
+
+  * Add support for Nettle 4.0 in cmac and hash modules
+
+ -- jiabowen <jiabowen@uniontech.com>  Fri, 29 May 2026 15:45:18 +0800
+
 chrony (4.4-1) unstable; urgency=medium
 
   * Import upstream version 4.4:
