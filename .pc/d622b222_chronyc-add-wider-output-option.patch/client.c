@@ -73,8 +73,6 @@ static int csv_mode = 0;
 
 static int end_dot = 0;
 
-static int wide = 0;
-
 /* ================================================== */
 /* Log a message. This is a minimalistic replacement of the logging.c
    implementation to avoid linking with it and other modules. */
@@ -1621,7 +1619,7 @@ print_report(const char *format, ...)
 {
   char buf[256];
   va_list ap;
-  int i, field, sign, width, prec, spec, varwidth;
+  int i, field, sign, width, prec, spec;
   const char *string;
   unsigned int uinteger;
   uint64_t uinteger64;
@@ -1655,13 +1653,9 @@ print_report(const char *format, ...)
     sign = 0;
     width = 0;
     prec = 5;
-    varwidth = 0;
 
     if (*format == '+' || *format == '-') {
       sign = 1;
-      format++;
-    } else if (*format == '*') {
-      varwidth = 1;
       format++;
     }
 
@@ -1850,14 +1844,6 @@ print_report(const char *format, ...)
         printf("%*o", width, uinteger);
         break;
       case 's': /* string */
-        if (varwidth) {
-          if (csv_mode) {
-            integer = va_arg(ap, int);
-            width = 0;
-          } else {
-            width = va_arg(ap, int);
-          }
-        }
         string = va_arg(ap, const char *);
         if (sign)
           printf("%-*s", width, string);
@@ -2008,17 +1994,14 @@ process_cmd_sources(char *line)
     printf("  .-- Source mode  '^' = server, '=' = peer, '#' = local clock.\n");
     printf(" / .- Source state '*' = current best, '+' = combined, '-' = not combined,\n");
     printf("| /             'x' = may be in error, '~' = too variable, '?' = unusable.\n");
-    printf("||  %*s                                               .- xxxx [ yyyy ] +/- zzzz\n", wide, "");
-    printf("||  %*s    Reachability register (octal) -.           |  xxxx = adjusted offset,\n", wide, "");
-    printf("||  %*s    Log2(Polling interval) --.      |          |  yyyy = measured offset,\n", wide, "");
-    printf("||  %*s                              \\     |          |  zzzz = estimated error.\n", wide, "");
-    printf("||  %*s                               |    |           \\\n", wide, "");
+    printf("||                                                 .- xxxx [ yyyy ] +/- zzzz\n");
+    printf("||      Reachability register (octal) -.           |  xxxx = adjusted offset,\n");
+    printf("||      Log2(Polling interval) --.      |          |  yyyy = measured offset,\n");
+    printf("||                                \\     |          |  zzzz = estimated error.\n");
+    printf("||                                 |    |           \\\n");
   }
 
-  if (wide)
-    print_header("MS Name/IP address                       Stratum Poll Reach LastRx Last sample               ");
-  else
-    print_header("MS Name/IP address         Stratum Poll Reach LastRx Last sample               ");
+  print_header("MS Name/IP address         Stratum Poll Reach LastRx Last sample               ");
 
   /*           "MS NNNNNNNNNNNNNNNNNNNNNNNNNNN  SS  PP   RRR  RRRR  SSSSSSS[SSSSSSS] +/- SSSSSS" */
 
@@ -2034,7 +2017,7 @@ process_cmd_sources(char *line)
       continue;
 
     ref = mode == RPY_SD_MD_REF && ip_addr.family == IPADDR_INET4;
-    format_name(name, sizeof (name), 25 + wide, ref, ref ? ip_addr.addr.in4 : 0, 1, &ip_addr);
+    format_name(name, sizeof (name), 25, ref, ref ? ip_addr.addr.in4 : 0, 1, &ip_addr);
 
     switch (mode) {
       case RPY_SD_MD_CLIENT:
@@ -2078,8 +2061,8 @@ process_cmd_sources(char *line)
         break;
     }
 
-    print_report("%c%c %*s  %2d  %2d   %3o  %I  %+S[%+S] +/- %S\n",
-                 mode_ch, state_ch, -27 - wide, name,
+    print_report("%c%c %-27s  %2d  %2d   %3o  %I  %+S[%+S] +/- %S\n",
+                 mode_ch, state_ch, name,
                  ntohs(reply.data.source_data.stratum),
                  (int16_t)ntohs(reply.data.source_data.poll),
                  ntohs(reply.data.source_data.reachability),
@@ -2114,21 +2097,18 @@ process_cmd_sourcestats(char *line)
   n_sources = ntohl(reply.data.n_sources.n_sources);
 
   if (verbose) {
-    printf("%*s                             .- Number of sample points in measurement set.\n", wide, "");
-    printf("%*s                            /    .- Number of residual runs with same sign.\n", wide, "");
-    printf("%*s                           |    /    .- Length of measurement set (time).\n", wide, "");
-    printf("%*s                           |   |    /      .- Est. clock freq error (ppm).\n", wide, "");
-    printf("%*s                           |   |   |      /           .- Est. error in freq.\n", wide, "");
-    printf("%*s                           |   |   |     |           /         .- Est. offset.\n", wide, "");
-    printf("%*s                           |   |   |     |          |          |   On the -.\n", wide, "");
-    printf("%*s                           |   |   |     |          |          |   samples. \\\n", wide, "");
-    printf("%*s                           |   |   |     |          |          |             |\n", wide, "");
+    printf("                             .- Number of sample points in measurement set.\n");
+    printf("                            /    .- Number of residual runs with same sign.\n");
+    printf("                           |    /    .- Length of measurement set (time).\n");
+    printf("                           |   |    /      .- Est. clock freq error (ppm).\n");
+    printf("                           |   |   |      /           .- Est. error in freq.\n");
+    printf("                           |   |   |     |           /         .- Est. offset.\n");
+    printf("                           |   |   |     |          |          |   On the -.\n");
+    printf("                           |   |   |     |          |          |   samples. \\\n");
+    printf("                           |   |   |     |          |          |             |\n");
   }
 
-  if (wide)
-    print_header("Name/IP Address                          NP  NR  Span  Frequency  Freq Skew  Offset  Std Dev");
-  else
-    print_header("Name/IP Address            NP  NR  Span  Frequency  Freq Skew  Offset  Std Dev");
+  print_header("Name/IP Address            NP  NR  Span  Frequency  Freq Skew  Offset  Std Dev");
 
   /*           "NNNNNNNNNNNNNNNNNNNNNNNNN  NP  NR  SSSS FFFFFFFFFF SSSSSSSSSS  SSSSSSS  SSSSSS" */
 
@@ -2142,11 +2122,11 @@ process_cmd_sourcestats(char *line)
     if (!all && ip_addr.family == IPADDR_ID)
       continue;
 
-    format_name(name, sizeof (name), 25 + wide, ip_addr.family == IPADDR_UNSPEC,
+    format_name(name, sizeof (name), 25, ip_addr.family == IPADDR_UNSPEC,
                 ntohl(reply.data.sourcestats.ref_id), 1, &ip_addr);
 
-    print_report("%*s %3U %3U  %I %+P %P  %+S  %S\n",
-                 -25 - wide, name,
+    print_report("%-25s %3U %3U  %I %+P %P  %+S  %S\n",
+                 name,
                  ntohl(reply.data.sourcestats.n_samples),
                  ntohl(reply.data.sourcestats.n_runs),
                  ntohl(reply.data.sourcestats.span_seconds),
@@ -2236,17 +2216,14 @@ process_cmd_authdata(char *line)
   n_sources = ntohl(reply.data.n_sources.n_sources);
 
   if (verbose) {
-    printf(    "%*s                             .- Auth. mechanism (NTS, SK - symmetric key)\n", wide, "");
-    printf(    "%*s                            |   Key length -.  Cookie length (bytes) -.\n", wide, "");
-    printf(    "%*s                            |       (bits)  |  Num. of cookies --.    |\n", wide, "");
-    printf(    "%*s                            |               |  Key est. attempts  |   |\n", wide, "");
-    printf(    "%*s                            |               |           |         |   |\n", wide, "");
+    printf(    "                             .- Auth. mechanism (NTS, SK - symmetric key)\n");
+    printf(    "                            |   Key length -.  Cookie length (bytes) -.\n");
+    printf(    "                            |       (bits)  |  Num. of cookies --.    |\n");
+    printf(    "                            |               |  Key est. attempts  |   |\n");
+    printf(    "                            |               |           |         |   |\n");
   }
 
-  if (wide)
-    print_header("Name/IP address                           Mode KeyID Type KLen Last Atmp  NAK Cook CLen");
-  else
-    print_header("Name/IP address             Mode KeyID Type KLen Last Atmp  NAK Cook CLen");
+  print_header("Name/IP address             Mode KeyID Type KLen Last Atmp  NAK Cook CLen");
 
   /*           "NNNNNNNNNNNNNNNNNNNNNNNNNNN MMMM KKKKK AAAA LLLL LLLL AAAA NNNN CCCC LLLL" */
 
@@ -2269,7 +2246,7 @@ process_cmd_authdata(char *line)
     if (!request_reply(&request, &reply, RPY_AUTH_DATA, 0))
       return 0;
 
-    format_name(name, sizeof (name), 25 + wide, 0, 0, 1, &ip_addr);
+    format_name(name, sizeof (name), 25, 0, 0, 1, &ip_addr);
 
     switch (ntohs(reply.data.auth_data.mode)) {
       case RPY_AD_MD_NONE:
@@ -2286,8 +2263,8 @@ process_cmd_authdata(char *line)
         break;
     }
 
-    print_report("%*s %4s %5U %4d %4d %I %4d %4d %4d %4d\n",
-                 -27 - wide, name, mode_str,
+    print_report("%-27s %4s %5U %4d %4d %I %4d %4d %4d %4d\n",
+                 name, mode_str,
                  ntohl(reply.data.auth_data.key_id),
                  ntohs(reply.data.auth_data.key_type),
                  ntohs(reply.data.auth_data.key_length),
@@ -2444,16 +2421,13 @@ process_cmd_selectdata(char *line)
     printf(    " /         d/D - large distance, ~ - jittery, w/W - waits for others,\n");
     printf(    "|          S - stale, O - orphan, T - not trusted, P - not preferred,\n");
     printf(    "|          U - waits for update,, x - falseticker, + - combined, * - best.\n");
-    printf(    "|%*s   Effective options   ---------.  (N - noselect, P - prefer\n", wide, "");
-    printf(    "|%*s   Configured options  ----.     \\  T - trust, R - require)\n", wide, "");
-    printf(    "|%*s   Auth. enabled (Y/N) -.   \\     \\     Offset interval --.\n", wide, "");
-    printf(    "|%*s                        |    |     |                       |\n", wide, "");
+    printf(    "|   Effective options   ---------.  (N - noselect, P - prefer\n");
+    printf(    "|   Configured options  ----.     \\  T - trust, R - require)\n");
+    printf(    "|   Auth. enabled (Y/N) -.   \\     \\     Offset interval --.\n");
+    printf(    "|                        |    |     |                       |\n");
   }
 
-  if (wide)
-    print_header("S Name/IP Address                      Auth COpts EOpts Last Score     Interval  Leap");
-  else
-    print_header("S Name/IP Address        Auth COpts EOpts Last Score     Interval  Leap");
+  print_header("S Name/IP Address        Auth COpts EOpts Last Score     Interval  Leap");
 
   /*           "S NNNNNNNNNNNNNNNNNNNNNNNNN A OOOO- OOOO- LLLL SSSSS IIIIIII IIIIIII  L" */
 
@@ -2467,15 +2441,15 @@ process_cmd_selectdata(char *line)
     if (!all && ip_addr.family == IPADDR_ID)
       continue;
 
-    format_name(name, sizeof (name), 25 + wide, ip_addr.family == IPADDR_UNSPEC,
+    format_name(name, sizeof (name), 25, ip_addr.family == IPADDR_UNSPEC,
                 ntohl(reply.data.select_data.ref_id), 1, &ip_addr);
 
     conf_options = ntohs(reply.data.select_data.conf_options);
     eff_options = ntohs(reply.data.select_data.eff_options);
 
-    print_report("%c %*s %c %c%c%c%c%c %c%c%c%c%c %I %5.1f %+S %+S  %1L\n",
+    print_report("%c %-25s %c %c%c%c%c%c %c%c%c%c%c %I %5.1f %+S %+S  %1L\n",
                  reply.data.select_data.state_char,
-                 -25 - wide, name,
+                 name,
                  reply.data.select_data.authentication ? 'Y' : 'N',
                  conf_options & RPY_SD_OPTION_NOSELECT ? 'N' : '-',
                  conf_options & RPY_SD_OPTION_PREFER ? 'P' : '-',
@@ -2643,7 +2617,7 @@ process_cmd_clients(char *line)
   IPAddr ip;
   uint32_t i, n_clients, next_index, n_indices, min_hits, reset;
   RPY_ClientAccesses_Client *client;
-  char header[94], name[50], *opt, *arg;
+  char header[80], name[50], *opt, *arg;
   int nke;
 
   next_index = 0;
@@ -2669,8 +2643,8 @@ process_cmd_clients(char *line)
   }
 
   snprintf(header, sizeof (header),
-           "Hostname %*s NTP   Drop Int IntL Last  %6s   Drop Int  Last",
-            20 + wide, "", nke ? "NTS-KE" : "Cmd");
+           "Hostname                      NTP   Drop Int IntL Last  %6s   Drop Int  Last",
+           nke ? "NTS-KE" : "Cmd");
   print_header(header);
 
   while (1) {
@@ -2696,10 +2670,10 @@ process_cmd_clients(char *line)
       if (ip.family == IPADDR_UNSPEC)
         continue;
 
-      format_name(name, sizeof (name), 25 + wide, 0, 0, 0, &ip);
+      format_name(name, sizeof (name), 25, 0, 0, 0, &ip);
 
-      print_report("%*s  %6U  %5U  %C  %C  %I  %6U  %5U  %C  %I\n",
-                   -25 - wide, name,
+      print_report("%-25s  %6U  %5U  %C  %C  %I  %6U  %5U  %C  %I\n",
+                   name,
                    ntohl(client->ntp_hits),
                    ntohl(client->ntp_drops),
                    client->ntp_interval,
@@ -3432,7 +3406,6 @@ print_help(const char *progname)
              "  -m\t\tAccept multiple commands\n"
              "  -h HOST\tSpecify server (%s)\n"
              "  -p PORT\tSpecify UDP port (%d)\n"
-             "  -w\t\tWide output\n"
              "  -v, --version\tPrint version and exit\n"
              "      --help\tPrint usage and exit\n",
              progname, DEFAULT_COMMAND_SOCKET",127.0.0.1,::1", DEFAULT_CANDM_PORT);
@@ -3471,7 +3444,7 @@ main(int argc, char **argv)
   optind = 1;
 
   /* Parse short command-line options */
-  while ((opt = getopt(argc, argv, "+46acdef:h:mnNp:u:v:w")) != -1) {
+  while ((opt = getopt(argc, argv, "+46acdef:h:mnNp:v")) != -1) {
     switch (opt) {
       case '4':
       case '6':
@@ -3510,9 +3483,6 @@ main(int argc, char **argv)
       case 'v':
         print_version();
         return 0;
-      case 'w':
-        wide = 14;
-        break;
       default:
         print_help(progname);
         return 1;
