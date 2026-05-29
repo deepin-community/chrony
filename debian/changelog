@@ -1,3 +1,20 @@
+chrony (4.4-1+deepin1) unstable; urgency=medium
+
+  * Add makefile-rebuild-after-configure.patch: rebuild everything after
+    configure changes
+
+ -- 贾博闻 <ut006444@PECI2782>  Fri, 29 May 2026 15:00:53 +0800
+
+chrony (4.4-1+deepin1) unstable; urgency=medium
+
+  * Add makefile-rebuild-after-configure.patch:
+    - Rebuild everything after configure changes.
+
+  * debian/patches/:
+    - Add makefile-rebuild-after-configure.patch.
+
+ -- deepin-auto-backport <auto-backport@deepin.org>  Thu, 29 May 2026 00:00:00 +0800
+
 chrony (4.4-1) unstable; urgency=medium
 
   * Import upstream version 4.4:
