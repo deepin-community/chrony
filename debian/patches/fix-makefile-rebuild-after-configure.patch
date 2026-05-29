@@ -1,0 +1,13 @@
+Index: repo/Makefile.in
+===================================================================
+--- repo.orig/Makefile.in
++++ repo/Makefile.in
+@@ -107,7 +107,7 @@ docs :
+ install-docs :
+ 	$(MAKE) -C doc install-docs
+ 
+-%.o : %.c
++%.o : %.c config.h
+ 	$(CC) $(CFLAGS) $(CPPFLAGS) -c $<
+ 
+ %.s : %.c
