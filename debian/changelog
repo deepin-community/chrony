@@ -1,3 +1,9 @@
+chrony (4.4-1+deepin1) unstable; urgency=medium
+
+  * Switch PRV_SetTime from settimeofday() to clock_settime()
+
+ -- 贾博闻 <ut006444@PECI2782>  Mon, 01 Jun 2026 14:21:47 +0800
+
 chrony (4.4-1) unstable; urgency=medium
 
   * Import upstream version 4.4:

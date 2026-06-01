@@ -1,0 +1,127 @@
+diff --git a/privops.c b/privops.c
+index 3bc76d14..57dc5a3b 100644
+--- a/privops.c
++++ b/privops.c
+@@ -65,7 +65,7 @@ typedef struct {
+ #endif
+ 
+ typedef struct {
+-  struct timeval tv;
++  struct timespec ts;
+ } ReqSetTime;
+ 
+ typedef struct {
+@@ -225,13 +225,13 @@ do_adjust_timex(const ReqAdjustTimex *req, PrvResponse *res)
+ 
+ /* ======================================================================= */
+ 
+-/* HELPER - perform settimeofday() */
++/* HELPER - perform clock_settime() */
+ 
+ #ifdef PRIVOPS_SETTIME
+ static void
+ do_set_time(const ReqSetTime *req, PrvResponse *res)
+ {
+-  res->rc = settimeofday(&req->tv, NULL);
++  res->rc = clock_settime(CLOCK_REALTIME, &req->ts);
+   if (res->rc)
+     res->res_errno = errno;
+ }
+@@ -508,25 +508,24 @@ PRV_AdjustTimex(struct timex *tmx)
+ 
+ /* ======================================================================= */
+ 
+-/* DAEMON - request settimeofday() */
++/* DAEMON - request clock_settime() */
+ 
+ #ifdef PRIVOPS_SETTIME
+ int
+-PRV_SetTime(const struct timeval *tp, const struct timezone *tzp)
++PRV_SetTime(clockid_t clockid, const struct timespec *tp)
+ {
+   PrvRequest req;
+   PrvResponse res;
+ 
+-  /* only support setting the time */
+-  assert(tp != NULL);
+-  assert(tzp == NULL);
++  if (clockid != CLOCK_REALTIME)
++    return -1;
+ 
+   if (!have_helper())
+-    return settimeofday(tp, NULL);
++    return clock_settime(clockid, tp);
+ 
+   memset(&req, 0, sizeof (req));
+   req.op = OP_SETTIME;
+-  req.data.set_time.tv = *tp;
++  req.data.set_time.ts = *tp;
+ 
+   submit_request(&req, &res);
+ 
+diff --git a/privops.h b/privops.h
+index 146580b7..4a6a3a49 100644
+--- a/privops.h
++++ b/privops.h
+@@ -41,9 +41,9 @@ int PRV_AdjustTimex(struct timex *txc);
+ #endif
+ 
+ #ifdef PRIVOPS_SETTIME
+-int PRV_SetTime(const struct timeval *tp, const struct timezone *tzp);
++int PRV_SetTime(clockid_t clockid, const struct timespec *tp);
+ #else
+-#define PRV_SetTime settimeofday
++#define PRV_SetTime clock_settime
+ #endif
+ 
+ #ifdef PRIVOPS_BINDSOCKET
+diff --git a/sys_generic.c b/sys_generic.c
+index 5c42df1d..95c9eede 100644
+--- a/sys_generic.c
++++ b/sys_generic.c
+@@ -349,15 +349,13 @@ static int
+ apply_step_offset(double offset)
+ {
+   struct timespec old_time, new_time;
+-  struct timeval new_time_tv;
+   double err;
+ 
+   LCL_ReadRawTime(&old_time);
+   UTI_AddDoubleToTimespec(&old_time, -offset, &new_time);
+-  UTI_TimespecToTimeval(&new_time, &new_time_tv);
+ 
+-  if (PRV_SetTime(&new_time_tv, NULL) < 0) {
+-    DEBUG_LOG("settimeofday() failed");
++  if (PRV_SetTime(CLOCK_REALTIME, &new_time) < 0) {
++    DEBUG_LOG("clock_settime() failed");
+     return 0;
+   }
+ 
+diff --git a/sys_linux.c b/sys_linux.c
+index c64bce45..19ba0044 100644
+--- a/sys_linux.c
++++ b/sys_linux.c
+@@ -427,7 +427,7 @@ SYS_Linux_EnableSystemCallFilter(int level, SYS_ProcessContext context)
+     SCMP_SYS(clock_gettime64),
+ #endif
+     SCMP_SYS(gettimeofday),
+-    SCMP_SYS(settimeofday),
++    SCMP_SYS(clock_settime),
+     SCMP_SYS(time),
+ 
+     /* Process */
+diff --git a/sys_macosx.c b/sys_macosx.c
+index c668bd4b..e233e98b 100644
+--- a/sys_macosx.c
++++ b/sys_macosx.c
+@@ -245,8 +245,8 @@ apply_step_offset(double offset)
+   UTI_AddDoubleToTimespec(&old_time, -offset, &new_time);
+   UTI_TimespecToTimeval(&new_time, &new_time_tv);
+ 
+-  if (PRV_SetTime(&new_time_tv, NULL) < 0) {
+-    DEBUG_LOG("settimeofday() failed");
++  if (PRV_SetTime(CLOCK_REALTIME, &new_time_tv) < 0) {
++    DEBUG_LOG("clock_settime() failed");
+     return 0;
+   }
+ 
