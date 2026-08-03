@@ -2,12 +2,12 @@
 .\"     Title: chronyc
 .\"    Author: [see the "AUTHOR(S)" section]
 .\" Generator: Asciidoctor 2.0.20
-.\"      Date: 2023-08-09
+.\"      Date: 2024-10-08
 .\"    Manual: User manual
 .\"    Source: chrony @CHRONY_VERSION@
 .\"  Language: English
 .\"
-.TH "CHRONYC" "1" "2023-08-09" "chrony @CHRONY_VERSION@" "User manual"
+.TH "CHRONYC" "1" "2024-10-08" "chrony @CHRONY_VERSION@" "User manual"
 .ie \n(.g .ds Aq \(aq
 .el       .ds Aq '
 .ss \n[.ss] 0
@@ -174,7 +174,7 @@ performance. An example of the output is shown below.
 .if n .RS 4
 .nf
 .fam C
-Reference ID    : CB00710F (foo.example.net)
+Reference ID    : CB00710F (ntp1.example.net)
 Stratum         : 3
 Ref time (UTC)  : Fri Jan 27 09:49:17 2017
 System time     : 0.000006523 seconds slow of NTP time
@@ -214,7 +214,7 @@ with an IPv4 address.
 .RS 4
 The stratum indicates how many hops away from a computer with an attached
 reference clock we are. Such a computer is a stratum\-1 computer, so the
-computer in the example is two hops away (i.e. \fIfoo.example.net\fP is a
+computer in the example is two hops away (i.e. \fIntp1.example.net\fP is a
 stratum\-2 and is synchronised from a stratum\-1).
 .RE
 .sp
@@ -411,8 +411,8 @@ extra caption lines are shown as a reminder of the meanings of the columns.
 MS Name/IP address         Stratum Poll Reach LastRx Last sample
 ===============================================================================
 #* GPS0                          0   4   377    11   \-479ns[ \-621ns] +/\-  134ns
-^? foo.example.net               2   6   377    23   \-923us[ \-924us] +/\-   43ms
-^+ bar.example.net               1   6   377    21  \-2629us[\-2619us] +/\-   86ms
+^? ntp1.example.net              2   6   377    23   \-923us[ \-924us] +/\-   43ms
+^+ ntp2.example.net              1   6   377    21  \-2629us[\-2619us] +/\-   86ms
 .fam
 .fi
 .if n .RE
@@ -582,7 +582,7 @@ An example report is:
 .fam C
 Name/IP Address            NP  NR  Span  Frequency  Freq Skew  Offset  Std Dev
 ===============================================================================
-foo.example.net            11   5   46m     \-0.001      0.045      1us    25us
+ntp1.example.net           11   5   46m     \-0.001      0.045      1us    25us
 .fam
 .fi
 .if n .RE
@@ -655,9 +655,9 @@ An example of the output is shown below.
 .fam C
 S Name/IP Address        Auth COpts EOpts Last Score     Interval  Leap
 =======================================================================
-D foo.example.net           Y \-\-\-\-\- \-\-TR\-    4   1.0   \-61ms   +62ms  N
-* bar.example.net           N \-\-\-\-\- \-\-\-\-\-    0   1.0 \-6846us +7305us  N
-+ baz.example.net           N \-\-\-\-\- \-\-\-\-\-   10   1.0 \-7381us +7355us  N
+D ntp1.example.net          Y \-\-\-\-\- \-\-TR\-    4   1.0   \-61ms   +62ms  N
+* ntp2.example.net          N \-\-\-\-\- \-\-\-\-\-    0   1.0 \-6846us +7305us  N
++ ntp3.example.net          N \-\-\-\-\- \-\-\-\-\-   10   1.0 \-7381us +7355us  N
 .fam
 .fi
 .if n .RE
@@ -695,7 +695,7 @@ synchronisation:
 .  sp -1
 .  IP \(bu 2.3
 .\}
-\fIs\fP \- is not synchronised.
+\fIM\fP \- does not have enough measurements.
 .RE
 .sp
 .RS 4
@@ -706,7 +706,7 @@ synchronisation:
 .  sp -1
 .  IP \(bu 2.3
 .\}
-\fIM\fP \- does not have enough measurements.
+\fIs\fP \- is not synchronised.
 .RE
 .sp
 .RS 4
@@ -881,7 +881,7 @@ or the reference ID if it is a reference clock.
 .sp
 \fBAuth\fP
 .RS 4
-This column indicites whether an authentication mechanism is enabled for the
+This column indicates whether an authentication mechanism is enabled for the
 source. \fIY\fP means yes and \fIN\fP means no.
 .RE
 .sp
@@ -1054,6 +1054,15 @@ The \fBreselectdist\fP command sets the reselection distance. It is equivalent t
 the \fBreselectdist\fP directive in the
 configuration file.
 .RE
+.sp
+\fBoffset\fP \fIaddress|refid\fP \fIoffset\fP
+.RS 4
+The \fBoffset\fP command modifies the offset correction of an NTP source specified
+by IP address (or the \fIID#XXXXXXXXXX\fP identifier used for unknown addresses),
+or a reference clock specified by reference ID as a string. It is equivalent to
+the \fBoffset\fP option in the \fBserver\fP or
+\fBrefclock\fP directive respectively.
+.RE
 .SS "NTP sources"
 .sp
 \fBactivity\fP
@@ -1109,9 +1118,9 @@ shown below.
 .fam C
 Name/IP address             Mode KeyID Type KLen Last Atmp  NAK Cook CLen
 =========================================================================
-foo.example.net              NTS     1   15  256 135m    0    0    8  100
-bar.example.net               SK    30   13  128    \-    0    0    0    0
-baz.example.net                \-     0    0    0    \-    0    0    0    0
+ntp1.example.net             NTS     1   15  256 135m    0    0    8  100
+ntp2.example.net              SK    30   13  128    \-    0    0    0    0
+ntp3.example.net               \-     0    0    0    \-    0    0    0    0
 .fam
 .fi
 .if n .RE
@@ -1391,6 +1400,10 @@ Total TX        : 24
 Total RX        : 24
 Total valid RX  : 24
 Total good RX   : 22
+Total kernel TX : 24
+Total kernel RX : 24
+Total HW TX     : 0
+Total HW RX     : 0
 .fam
 .fi
 .if n .RE
@@ -1486,6 +1499,30 @@ The number of packets which passed the first two groups of NTP tests.
 The number of packets which passed all three groups of NTP tests, i.e. the NTP
 measurement was accepted.
 .RE
+.sp
+\fBTotal kernel TX\fP
+.RS 4
+The number of packets sent to the source for which a timestamp was captured by
+the kernel.
+.RE
+.sp
+\fBTotal kernel RX\fP
+.RS 4
+The number of packets received from the source for which a timestamp was
+captured by the kernel.
+.RE
+.sp
+\fBTotal HW TX\fP
+.RS 4
+The number of packets sent to the source for which a timestamp was captured by
+the NIC.
+.RE
+.sp
+\fBTotal HW RX\fP
+.RS 4
+The number of packets received from the source for which a timestamp was
+captured by the NIC.
+.RE
 .RE
 .sp
 \fBadd peer\fP \fIname\fP [\fIoption\fP]...
@@ -1502,7 +1539,7 @@ An example of using this command is shown below.
 .if n .RS 4
 .nf
 .fam C
-add peer foo.example.net minpoll 6 maxpoll 10 key 25
+add peer ntp1.example.net minpoll 6 maxpoll 10 key 25
 .fam
 .fi
 .if n .RE
@@ -1522,7 +1559,7 @@ An example of using this command is shown below:
 .if n .RS 4
 .nf
 .fam C
-add pool foo.example.net maxsources 3 iburst
+add pool ntp1.example.net maxsources 3 iburst
 .fam
 .fi
 .if n .RE
@@ -1542,7 +1579,7 @@ An example of using this command is shown below:
 .if n .RS 4
 .nf
 .fam C
-add server foo.example.net minpoll 6 maxpoll 10 key 25
+add server ntp1.example.net minpoll 6 maxpoll 10 key 25
 .fam
 .fi
 .if n .RE
@@ -1651,7 +1688,7 @@ Example of the three\-argument form of the command is:
 .if n .RS 4
 .nf
 .fam C
-burst 2/10 foo.example.net
+burst 2/10 ntp1.example.net
 .fam
 .fi
 .if n .RE
@@ -1732,7 +1769,7 @@ uses an IP address or a hostname. These forms are illustrated below.
 offline
 offline 255.255.255.0/1.2.3.0
 offline 2001:db8:789a::/48
-offline foo.example.net
+offline ntp1.example.net
 .fam
 .fi
 .if n .RE
@@ -1802,6 +1839,10 @@ command might replace the addresses even if they are still in the pool.
 The \fBreload sources\fP command causes \fBchronyd\fP to re\-read all \fI*.sources\fP files
 from the directories specified by the
 \fBsourcedir\fP directive.
+.sp
+Note that modified sources (e.g. specified with a new option) are not modified
+in memory. They are removed and added again, which causes them to lose old
+measurements and reset the selection state.
 .RE
 .sp
 \fBsourcename\fP \fIaddress\fP
@@ -1973,7 +2014,7 @@ Examples of use, showing a named host and a numeric IP address, are as follows:
 .if n .RS 4
 .nf
 .fam C
-accheck foo.example.net
+accheck ntp1.example.net
 accheck 1.2.3.4
 accheck 2001:db8::1
 .fam
@@ -2006,7 +2047,7 @@ An example of the output is:
 Hostname                      NTP   Drop Int IntL Last     Cmd   Drop Int  Last
 ===============================================================================
 localhost                       2      0   2   \-   133      15      0  \-1     7
-foo.example.net                12      0   6   \-    23       0      0   \-     \-
+ntp1.example.net               12      0   6   \-    23       0      0   \-     \-
 .fam
 .fi
 .if n .RE
@@ -2401,7 +2442,7 @@ Examples of use are as follows:
 .if n .RS 4
 .nf
 .fam C
-cmdaccheck foo.example.net
+cmdaccheck ntp1.example.net
 cmdaccheck 1.2.3.4
 cmdaccheck 2001:db8::1
 .fam

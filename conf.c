@@ -3,7 +3,7 @@
 
  **********************************************************************
  * Copyright (C) Richard P. Curnow  1997-2003
- * Copyright (C) Miroslav Lichvar  2009-2017, 2020
+ * Copyright (C) Miroslav Lichvar  2009-2017, 2020, 2024
  * 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of version 2 of the GNU General Public License as
@@ -57,6 +57,7 @@ static int parse_string(char *line, char **result);
 static int parse_int(char *line, int *result);
 static int parse_double(char *line, double *result);
 static int parse_null(char *line);
+static int parse_ints(char *line, ARR_Instance array);
 
 static void parse_allow_deny(char *line, ARR_Instance restrictions, int allow);
 static void parse_authselectmode(char *);
@@ -78,8 +79,9 @@ static void parse_makestep(char *);
 static void parse_maxchange(char *);
 static void parse_ntsserver(char *, ARR_Instance files);
 static void parse_ntstrustedcerts(char *);
+static void parse_pidfile(char *line);
 static void parse_ratelimit(char *line, int *enabled, int *interval,
-                            int *burst, int *leak);
+                            int *burst, int *leak, int *kod);
 static void parse_refclock(char *);
 static void parse_smoothtime(char *);
 static void parse_source(char *line, char *type, int fatal);
@@ -129,6 +131,7 @@ static int enable_local=0;
 static int local_stratum;
 static int local_orphan;
 static double local_distance;
+static double local_activate;
 
 /* Threshold (in seconds) - if absolute value of initial error is less
    than this, slew instead of stepping */
@@ -220,6 +223,7 @@ static int ntp_ratelimit_enabled = 0;
 static int ntp_ratelimit_interval = 3;
 static int ntp_ratelimit_burst = 8;
 static int ntp_ratelimit_leak = 2;
+static int ntp_ratelimit_kod = 0;
 static int nts_ratelimit_enabled = 0;
 static int nts_ratelimit_interval = 6;
 static int nts_ratelimit_burst = 8;
@@ -249,13 +253,19 @@ static REF_LeapMode leapsec_mode = REF_LeapModeSystem;
 /* Name of a system timezone containing leap seconds occuring at midnight */
 static char *leapsec_tz = NULL;
 
+/* File name of leap seconds list, usually /usr/share/zoneinfo/leap-seconds.list */
+static char *leapsec_list = NULL;
+
 /* Name of the user to which will be dropped root privileges. */
 static char *user;
 
 /* Address refresh interval */
 static int refresh = 1209600; /* 2 weeks */
 
+#define DEFAULT_NTS_AEADS "30 15"
+
 /* NTS server and client configuration */
+static ARR_Instance nts_aeads; /* array of int */
 static char *nts_dump_dir = NULL;
 static char *nts_ntp_server = NULL;
 static ARR_Instance nts_server_cert_files; /* array of (char *) */
@@ -282,19 +292,23 @@ static double hwts_timeout = 0.001;
 
 /* PTP event port (disabled by default) */
 static int ptp_port = 0;
+/* PTP domain number of NTP-over-PTP messages */
+static int ptp_domain = 123;
 
 typedef struct {
   NTP_Source_Type type;
   int pool;
   CPS_NTP_Source params;
+  NSR_Status status;
+  uint32_t conf_id;
 } NTP_Source;
 
 /* Array of NTP_Source */
 static ARR_Instance ntp_sources;
 /* Array of (char *) */
 static ARR_Instance ntp_source_dirs;
-/* Array of uint32_t corresponding to ntp_sources (for sourcedirs reload) */
-static ARR_Instance ntp_source_ids;
+/* Flag indicating ntp_sources is used for sourcedirs after config load */
+static int conf_ntp_sources_added = 0;
 
 /* Array of RefclockParameters */
 static ARR_Instance refclock_sources;
@@ -387,6 +401,8 @@ check_number_of_args(char *line, int num)
 void
 CNF_Initialise(int r, int client_only)
 {
+  char buf[10];
+
   restarted = r;
 
   hwts_interfaces = ARR_CreateInstance(sizeof (CNF_HwTsInterface));
@@ -394,13 +410,15 @@ CNF_Initialise(int r, int client_only)
   init_sources = ARR_CreateInstance(sizeof (IPAddr));
   ntp_sources = ARR_CreateInstance(sizeof (NTP_Source));
   ntp_source_dirs = ARR_CreateInstance(sizeof (char *));
-  ntp_source_ids = ARR_CreateInstance(sizeof (uint32_t));
   refclock_sources = ARR_CreateInstance(sizeof (RefclockParameters));
   broadcasts = ARR_CreateInstance(sizeof (NTP_Broadcast_Destination));
 
   ntp_restrictions = ARR_CreateInstance(sizeof (AllowDeny));
   cmd_restrictions = ARR_CreateInstance(sizeof (AllowDeny));
 
+  nts_aeads = ARR_CreateInstance(sizeof (int));
+  snprintf(buf, sizeof (buf), DEFAULT_NTS_AEADS);
+  parse_ints(buf, nts_aeads);
   nts_server_cert_files = ARR_CreateInstance(sizeof (char *));
   nts_server_key_files = ARR_CreateInstance(sizeof (char *));
   nts_trusted_certs_paths = ARR_CreateInstance(sizeof (char *));
@@ -454,13 +472,13 @@ CNF_Finalise(void)
   ARR_DestroyInstance(init_sources);
   ARR_DestroyInstance(ntp_sources);
   ARR_DestroyInstance(ntp_source_dirs);
-  ARR_DestroyInstance(ntp_source_ids);
   ARR_DestroyInstance(refclock_sources);
   ARR_DestroyInstance(broadcasts);
 
   ARR_DestroyInstance(ntp_restrictions);
   ARR_DestroyInstance(cmd_restrictions);
 
+  ARR_DestroyInstance(nts_aeads);
   ARR_DestroyInstance(nts_server_cert_files);
   ARR_DestroyInstance(nts_server_key_files);
   ARR_DestroyInstance(nts_trusted_certs_paths);
@@ -471,6 +489,7 @@ CNF_Finalise(void)
   Free(hwclock_file);
   Free(keys_file);
   Free(leapsec_tz);
+  Free(leapsec_list);
   Free(logdir);
   Free(bind_ntp_iface);
   Free(bind_acq_iface);
@@ -585,7 +604,7 @@ CNF_ParseLine(const char *filename, int number, char *line)
     parse_int(p, &cmd_port);
   } else if (!strcasecmp(command, "cmdratelimit")) {
     parse_ratelimit(p, &cmd_ratelimit_enabled, &cmd_ratelimit_interval,
-                    &cmd_ratelimit_burst, &cmd_ratelimit_leak);
+                    &cmd_ratelimit_burst, &cmd_ratelimit_leak, NULL);
   } else if (!strcasecmp(command, "combinelimit")) {
     parse_double(p, &combine_limit);
   } else if (!strcasecmp(command, "confdir")) {
@@ -620,6 +639,8 @@ CNF_ParseLine(const char *filename, int number, char *line)
     parse_leapsecmode(p);
   } else if (!strcasecmp(command, "leapsectz")) {
     parse_string(p, &leapsec_tz);
+  } else if (!strcasecmp(command, "leapseclist")) {
+    parse_string(p, &leapsec_list);
   } else if (!strcasecmp(command, "local")) {
     parse_local(p);
   } else if (!strcasecmp(command, "lock_all")) {
@@ -668,9 +689,11 @@ CNF_ParseLine(const char *filename, int number, char *line)
     no_system_cert = parse_null(p);
   } else if (!strcasecmp(command, "ntpsigndsocket")) {
     parse_string(p, &ntp_signd_socket);
+  } else if (!strcasecmp(command, "ntsaeads")) {
+    parse_ints(p, nts_aeads);
   } else if (!strcasecmp(command, "ntsratelimit")) {
     parse_ratelimit(p, &nts_ratelimit_enabled, &nts_ratelimit_interval,
-                    &nts_ratelimit_burst, &nts_ratelimit_leak);
+                    &nts_ratelimit_burst, &nts_ratelimit_leak, NULL);
   } else if (!strcasecmp(command, "ntscachedir") ||
              !strcasecmp(command, "ntsdumpdir")) {
     parse_string(p, &nts_dump_dir);
@@ -693,16 +716,18 @@ CNF_ParseLine(const char *filename, int number, char *line)
   } else if (!strcasecmp(command, "peer")) {
     parse_source(p, command, 1);
   } else if (!strcasecmp(command, "pidfile")) {
-    parse_string(p, &pidfile);
+    parse_pidfile(p);
   } else if (!strcasecmp(command, "pool")) {
     parse_source(p, command, 1);
   } else if (!strcasecmp(command, "port")) {
     parse_int(p, &ntp_port);
+  } else if (!strcasecmp(command, "ptpdomain")) {
+    parse_int(p, &ptp_domain);
   } else if (!strcasecmp(command, "ptpport")) {
     parse_int(p, &ptp_port);
   } else if (!strcasecmp(command, "ratelimit")) {
     parse_ratelimit(p, &ntp_ratelimit_enabled, &ntp_ratelimit_interval,
-                    &ntp_ratelimit_burst, &ntp_ratelimit_leak);
+                    &ntp_ratelimit_burst, &ntp_ratelimit_leak, &ntp_ratelimit_kod);
   } else if (!strcasecmp(command, "refclock")) {
     parse_refclock(p);
   } else if (!strcasecmp(command, "refresh")) {
@@ -793,6 +818,25 @@ parse_null(char *line)
 
 /* ================================================== */
 
+static int
+parse_ints(char *line, ARR_Instance array)
+{
+  char *s;
+  int v;
+
+  ARR_SetSize(array, 0);
+
+  while (*line) {
+    s = line;
+    line = CPS_SplitWord(line);
+    parse_int(s, &v);
+    ARR_AppendElement(array, &v);
+  }
+  return 1;
+}
+
+/* ================================================== */
+
 static void
 parse_source(char *line, char *type, int fatal)
 {
@@ -823,6 +867,9 @@ parse_source(char *line, char *type, int fatal)
   }
 
   source.params.name = Strdup(source.params.name);
+  source.status = NSR_NoSuchSource;
+  source.conf_id = 0;
+
   ARR_AppendElement(ntp_sources, &source);
 }
 
@@ -840,7 +887,7 @@ parse_sourcedir(char *line)
 /* ================================================== */
 
 static void
-parse_ratelimit(char *line, int *enabled, int *interval, int *burst, int *leak)
+parse_ratelimit(char *line, int *enabled, int *interval, int *burst, int *leak, int *kod)
 {
   int n, val;
   char *opt;
@@ -861,6 +908,8 @@ parse_ratelimit(char *line, int *enabled, int *interval, int *burst, int *leak)
       *burst = val;
     else if (!strcasecmp(opt, "leak"))
       *leak = val;
+    else if (!strcasecmp(opt, "kod") && kod)
+      *kod = val;
     else
       command_parse_error();
   }
@@ -1058,7 +1107,7 @@ parse_log(char *line)
 static void
 parse_local(char *line)
 {
-  if (!CPS_ParseLocal(line, &local_stratum, &local_orphan, &local_distance))
+  if (!CPS_ParseLocal(line, &local_stratum, &local_orphan, &local_distance, &local_activate))
     command_parse_error();
   enable_local = 1;
 }
@@ -1512,6 +1561,20 @@ parse_hwtimestamp(char *line)
 
 /* ================================================== */
 
+static void
+parse_pidfile(char *line)
+{
+  parse_string(line, &pidfile);
+
+  /* / disables the PID file handling */
+  if (strcmp(pidfile, "/") == 0) {
+    Free(pidfile);
+    pidfile = NULL;
+  }
+}
+
+/* ================================================== */
+
 static const char *
 get_basename(const char *path)
 {
@@ -1660,11 +1723,13 @@ compare_sources(const void *a, const void *b)
     return 1;
   if ((d = strcmp(sa->params.name, sb->params.name)) != 0)
     return d;
-  if ((d = (int)(sa->type) - (int)(sb->type)) != 0)
+  if ((d = (int)sa->type - (int)sb->type) != 0)
     return d;
-  if ((d = sa->pool - sb->pool) != 0)
+  if ((d = (int)sa->pool - (int)sb->pool) != 0)
     return d;
-  if ((d = sa->params.port - sb->params.port) != 0)
+  if ((d = (int)sa->params.family - (int)sb->params.family) != 0)
+    return d;
+  if ((d = (int)sa->params.port - (int)sb->params.port) != 0)
     return d;
   return memcmp(&sa->params.params, &sb->params.params, sizeof (sa->params.params));
 }
@@ -1676,18 +1741,17 @@ reload_source_dirs(void)
 {
   NTP_Source *prev_sources, *new_sources, *source;
   unsigned int i, j, prev_size, new_size, unresolved;
-  uint32_t *prev_ids, *new_ids;
   char buf[MAX_LINE_LENGTH];
   NSR_Status s;
-  int d;
+  int d, pass;
 
-  prev_size = ARR_GetSize(ntp_source_ids);
-  if (prev_size > 0 && ARR_GetSize(ntp_sources) != prev_size)
-    assert(0);
+  /* Ignore reload command before adding configured sources */
+  if (!conf_ntp_sources_added)
+    return;
 
-  /* Save the current sources and their configuration IDs */
-  prev_ids = MallocArray(uint32_t, prev_size);
-  memcpy(prev_ids, ARR_GetElements(ntp_source_ids), prev_size * sizeof (prev_ids[0]));
+  prev_size = ARR_GetSize(ntp_sources);
+
+  /* Save the current sources */
   prev_sources = MallocArray(NTP_Source, prev_size);
   memcpy(prev_sources, ARR_GetElements(ntp_sources), prev_size * sizeof (prev_sources[0]));
 
@@ -1705,44 +1769,45 @@ reload_source_dirs(void)
 
   new_size = ARR_GetSize(ntp_sources);
   new_sources = ARR_GetElements(ntp_sources);
-  ARR_SetSize(ntp_source_ids, new_size);
-  new_ids = ARR_GetElements(ntp_source_ids);
   unresolved = 0;
 
   LOG_SetContext(LOGC_SourceFile);
 
   qsort(new_sources, new_size, sizeof (new_sources[0]), compare_sources);
 
-  for (i = j = 0; i < prev_size || j < new_size; ) {
-    if (i < prev_size && j < new_size)
-      d = compare_sources(&prev_sources[i], &new_sources[j]);
-    else
-      d = i < prev_size ? -1 : 1;
+  for (pass = 0; pass < 2; pass++) {
+    for (i = j = 0; i < prev_size || j < new_size; i += d <= 0, j += d >= 0) {
+      if (i < prev_size && j < new_size)
+        d = compare_sources(&prev_sources[i], &new_sources[j]);
+      else
+        d = i < prev_size ? -1 : 1;
 
-    if (d < 0) {
-      /* Remove the missing source */
-      if (prev_sources[i].params.name[0] != '\0')
-        NSR_RemoveSourcesById(prev_ids[i]);
-      i++;
-    } else if (d > 0) {
-      /* Add a newly configured source */
-      source = &new_sources[j];
-      s = NSR_AddSourceByName(source->params.name, source->params.port, source->pool,
-                              source->type, &source->params.params, &new_ids[j]);
-
-      if (s == NSR_UnresolvedName) {
-        unresolved++;
-      } else if (s != NSR_Success) {
-        LOG(LOGS_ERR, "Could not add source %s", source->params.name);
-
-        /* Mark the source as not present */
-        source->params.name[0] = '\0';
+      /* Remove missing sources before adding others to avoid conflicts */
+      if (pass == 0 && d < 0 && prev_sources[i].status == NSR_Success) {
+        NSR_RemoveSourcesById(prev_sources[i].conf_id);
       }
-      j++;
-    } else {
-      /* Keep the existing source */
-      new_ids[j] = prev_ids[i];
-      i++, j++;
+
+      /* Add new sources and sources that could not be added before */
+      if (pass == 1 && (d > 0 || (d == 0 && prev_sources[i].status != NSR_Success))) {
+        source = &new_sources[j];
+        s = NSR_AddSourceByName(source->params.name, source->params.family, source->params.port,
+                                source->pool, source->type, &source->params.params,
+                                &source->conf_id);
+        source->status = s;
+
+        if (s == NSR_UnresolvedName) {
+          unresolved++;
+        } else if (s != NSR_Success && (d > 0 || s != prev_sources[i].status)) {
+          LOG(LOGS_ERR, "Could not add source %s : %s",
+              source->params.name, NSR_StatusToString(s));
+        }
+      }
+
+      /* Keep unchanged sources */
+      if (pass == 1 && d == 0) {
+        new_sources[j].status = prev_sources[i].status;
+        new_sources[j].conf_id = prev_sources[i].conf_id;
+      }
     }
   }
 
@@ -1751,7 +1816,6 @@ reload_source_dirs(void)
   for (i = 0; i < prev_size; i++)
     Free(prev_sources[i].params.name);
   Free(prev_sources);
-  Free(prev_ids);
 
   if (unresolved > 0)
     NSR_ResolveSources();
@@ -1840,15 +1904,17 @@ CNF_AddSources(void)
   for (i = 0; i < ARR_GetSize(ntp_sources); i++) {
     source = (NTP_Source *)ARR_GetElement(ntp_sources, i);
 
-    s = NSR_AddSourceByName(source->params.name, source->params.port, source->pool,
-                            source->type, &source->params.params, NULL);
+    s = NSR_AddSourceByName(source->params.name, source->params.family, source->params.port,
+                            source->pool, source->type, &source->params.params, NULL);
     if (s != NSR_Success && s != NSR_UnresolvedName)
       LOG(LOGS_ERR, "Could not add source %s", source->params.name);
 
     Free(source->params.name);
   }
 
+  /* The arrays will be used for sourcedir (re)loading */
   ARR_SetSize(ntp_sources, 0);
+  conf_ntp_sources_added = 1;
 
   reload_source_dirs();
 }
@@ -2146,12 +2212,13 @@ CNF_GetCommandPort(void) {
 /* ================================================== */
 
 int
-CNF_AllowLocalReference(int *stratum, int *orphan, double *distance)
+CNF_AllowLocalReference(int *stratum, int *orphan, double *distance, double *activate)
 {
   if (enable_local) {
     *stratum = local_stratum;
     *orphan = local_orphan;
     *distance = local_distance;
+    *activate = local_activate;
     return 1;
   } else {
     return 0;
@@ -2384,6 +2451,14 @@ CNF_GetLeapSecTimezone(void)
 
 /* ================================================== */
 
+char *
+CNF_GetLeapSecList(void)
+{
+  return leapsec_list;
+}
+
+/* ================================================== */
+
 int
 CNF_GetSchedPriority(void)
 {
@@ -2400,11 +2475,12 @@ CNF_GetLockMemory(void)
 
 /* ================================================== */
 
-int CNF_GetNTPRateLimit(int *interval, int *burst, int *leak)
+int CNF_GetNTPRateLimit(int *interval, int *burst, int *leak, int *kod)
 {
   *interval = ntp_ratelimit_interval;
   *burst = ntp_ratelimit_burst;
   *leak = ntp_ratelimit_leak;
+  *kod = ntp_ratelimit_kod;
   return ntp_ratelimit_enabled;
 }
 
@@ -2539,9 +2615,25 @@ CNF_GetPtpPort(void)
 /* ================================================== */
 
 int
+CNF_GetPtpDomain(void)
+{
+  return ptp_domain;
+}
+
+/* ================================================== */
+
+int
 CNF_GetRefresh(void)
 {
   return refresh;
+}
+
+/* ================================================== */
+
+ARR_Instance
+CNF_GetNtsAeads(void)
+{
+  return nts_aeads;
 }
 
 /* ================================================== */

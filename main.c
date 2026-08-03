@@ -32,6 +32,7 @@
 
 #include "main.h"
 #include "sched.h"
+#include "leapdb.h"
 #include "local.h"
 #include "sys.h"
 #include "ntp_io.h"
@@ -134,6 +135,7 @@ MAI_CleanupAndExit(void)
   RCL_Finalise();
   SRC_Finalise();
   REF_Finalise();
+  LDB_Finalise();
   RTC_Finalise();
   SYS_Finalise();
 
@@ -213,7 +215,10 @@ post_init_ntp_hook(void *anything)
     REF_SetMode(ref_mode);
   }
 
-  /* Close the pipe to the foreground process so it can exit */
+  /* Send an empty message to the foreground process so it can exit.
+     If that fails, indicating the process was killed, exit too. */
+  if (!LOG_NotifyParent(""))
+    SCH_QuitProgram();
   LOG_CloseParentFd();
 
   CNF_AddSources();
@@ -336,8 +341,8 @@ go_daemon(void)
 
     close(pipefd[1]);
     r = read(pipefd[0], message, sizeof (message));
-    if (r) {
-      if (r > 0) {
+    if (r != 1 || message[0] != '\0') {
+      if (r > 1) {
         /* Print the error message from the child */
         message[sizeof (message) - 1] = '\0';
         fprintf(stderr, "%s\n", message);
@@ -368,9 +373,9 @@ go_daemon(void)
       }
 
       /* Don't keep stdin/out/err from before. But don't close
-         the parent pipe yet. */
+         the parent pipe yet, or reusable file descriptors. */
       for (fd=0; fd<1024; fd++) {
-        if (fd != pipefd[1])
+        if (fd != pipefd[1] && !SCK_IsReusable(fd))
           close(fd);
       }
 
@@ -560,6 +565,9 @@ int main
   if (user_check && getuid() != 0)
     LOG_FATAL("Not superuser");
 
+  /* Initialise reusable file descriptors before fork */
+  SCK_PreInitialise();
+
   /* Turn into a daemon */
   if (!nofork) {
     go_daemon();
@@ -652,6 +660,7 @@ int main
   if (!geteuid())
     LOG(LOGS_WARN, "Running with root privileges");
 
+  LDB_Initialise();
   REF_Initialise();
   SST_Initialise();
   NSR_Initialise();

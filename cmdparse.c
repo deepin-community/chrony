@@ -46,6 +46,7 @@ CPS_ParseNTPSourceAdd(char *line, CPS_NTP_Source *src)
   uint32_t ef_type;
   int n, sel_option;
   
+  src->family = IPADDR_UNSPEC;
   src->port = SRC_DEFAULT_PORT;
   src->params.minpoll = SRC_DEFAULT_MINPOLL;
   src->params.maxpoll = SRC_DEFAULT_MAXPOLL;
@@ -115,8 +116,11 @@ CPS_ParseNTPSourceAdd(char *line, CPS_NTP_Source *src)
       if (sscanf(line, "%"SCNx32"%n", &ef_type, &n) != 1)
         return 0;
       switch (ef_type) {
-        case NTP_EF_EXP1:
-          src->params.ext_fields |= NTP_EF_FLAG_EXP1;
+        case NTP_EF_EXP_MONO_ROOT:
+          src->params.ext_fields |= NTP_EF_FLAG_EXP_MONO_ROOT;
+          break;
+        case NTP_EF_EXP_NET_CORRECTION:
+          src->params.ext_fields |= NTP_EF_FLAG_EXP_NET_CORRECTION;
           break;
         default:
           return 0;
@@ -124,6 +128,10 @@ CPS_ParseNTPSourceAdd(char *line, CPS_NTP_Source *src)
     } else if (!strcasecmp(cmd, "filter")) {
       if (sscanf(line, "%d%n", &src->params.filter_length, &n) != 1)
         return 0;
+    } else if (!strcasecmp(cmd, "ipv4")) {
+      src->family = IPADDR_INET4;
+    } else if (!strcasecmp(cmd, "ipv6")) {
+      src->family = IPADDR_INET6;
     } else if (!strcasecmp(cmd, "maxdelay")) {
       if (sscanf(line, "%lf%n", &src->params.max_delay, &n) != 1)
         return 0;
@@ -288,13 +296,14 @@ CPS_ParseAllowDeny(char *line, int *all, IPAddr *ip, int *subnet_bits)
 /* ================================================== */
 
 int
-CPS_ParseLocal(char *line, int *stratum, int *orphan, double *distance)
+CPS_ParseLocal(char *line, int *stratum, int *orphan, double *distance, double *activate)
 {
   int n;
   char *cmd;
 
   *stratum = 10;
   *distance = 1.0;
+  *activate = 0.0;
   *orphan = 0;
 
   while (*line) {
@@ -310,6 +319,9 @@ CPS_ParseLocal(char *line, int *stratum, int *orphan, double *distance)
       n = 0;
     } else if (!strcasecmp(cmd, "distance")) {
       if (sscanf(line, "%lf%n", distance, &n) != 1)
+        return 0;
+    } else if (!strcasecmp(cmd, "activate")) {
+      if (sscanf(line, "%lf%n", activate, &n) != 1)
         return 0;
     } else {
       return 0;
