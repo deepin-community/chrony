@@ -1,3 +1,194 @@
+chrony (4.6.1-3+deb13u2) trixie; urgency=medium
+
+  * debian/chrony.if-{post-down,up}:
+    - Adjust the if-up and if-down hook scripts so that they always exit
+    successfully. (Closes: #1011533)
+
+ -- Vincent Blut <vincent.debian@free.fr>  Wed, 24 Jun 2026 20:05:59 +0200
+
+chrony (4.6.1-3+deb13u1) trixie; urgency=medium
+
+  * debian/patches/:
+    - Add refclock_phc_open-device-for-writing-with-extpps-option.patch.
+    Thanks to Jan Lübbe for the report. (Closes: #1127659)
+
+  * debian/test/upstream-simulation-test-suite:
+    - Prevent simulation test failures.
+
+ -- Vincent Blut <vincent.debian@free.fr>  Mon, 16 Feb 2026 17:34:12 +0100
+
+chrony (4.6.1-3) unstable; urgency=medium
+
+  * debian/patches/:
+    - Add conf:_fix_sourcedir_reloading_to_not_multiply_sources.patch. Thanks
+    to MichaelR <MichaelR42@runbox.com> for the report. (Closes: #1106875)
+
+ -- Vincent Blut <vincent.debian@free.fr>  Tue, 03 Jun 2025 17:16:37 +0200
+
+chrony (4.6.1-2) unstable; urgency=medium
+
+  [ Vincent Blut ]
+  * debian/chrony.conf:
+    - Move the confdir directive at the end of the configuration file. This
+    should prevent directives defined in /etc/chrony/conf.d/ from being
+    overridden by corresponding directives in chrony.conf. (Closes: #1073865)
+
+  * debian/chrony.service:
+    - Drop 'After=network.target'. First and foremost, the network.target unit
+    doesn't guarantee that any network interfaces are configured or
+    operational. Furthermore, chronyd is perfectly able to operate without
+    network or DNS functionality notably when used with a hardware reference
+    clock as a time source.
+    - Do not pull time-sync.target nor order chrony.service before it. Services
+    pulling and being ordered before time-sync.target must ensure that the
+    system clock has been completely synchronized and thus typically guarantee
+    an accurate clock. This can't be assumed right after chrony.service has
+    finished starting.
+
+  * debian/control:
+    - Support seccomp facility on loong64.
+    - Bump Standards-Version to 4.7.2 (no changes required).
+
+  * debian/copyright:
+    - Update copyright year for debian/*.
+
+  * debian/rules:
+    - Revert "d/rules: Disable seccomp on loong64".
+
+  * debian/usr.sbin.chronyd:
+    - Relax rule regarding temperature sensors. (Closes: #1084841)
+
+  [ Joachim Kross ]
+  * debian/{control,postinst,chrony.conf}:
+    - Minor textual updates.
+
+ -- Vincent Blut <vincent.debian@free.fr>  Wed, 02 Apr 2025 21:33:06 +0200
+
+chrony (4.6.1-1) unstable; urgency=medium
+
+  * Import upstream version 4.6.1:
+    - Please see /usr/share/doc/chrony/NEWS.gz for the release notes.
+
+  * debian/copyright:
+    - Update copyright year.
+
+  * debian/.gitlab-ci:
+    - Use the recommended URL.
+
+ -- Vincent Blut <vincent.debian@free.fr>  Tue, 08 Oct 2024 16:06:04 +0200
+
+chrony (4.6-1) unstable; urgency=medium
+
+  * Import upstream version 4.6-1:
+    - Please see /usr/share/doc/chrony/NEWS.gz for the release notes.
+
+  * debian/copyright:
+    - Update copyright years.
+    - Add Files stanzas.
+
+  * debian/tests/upstream-simulation-test-suite:
+    - Update clknetsim version.
+
+ -- Vincent Blut <vincent.debian@free.fr>  Mon, 02 Sep 2024 19:37:15 +0200
+
+chrony (4.6~pre1-1) experimental; urgency=medium
+
+  * Import upstream version 4.6-pre1:
+    - Please see /usr/share/doc/chrony/NEWS.gz for the release notes.
+
+  * debian/chrony.conf:
+    - Use the leapseclist directive to read NIST/IERS leap-seconds.list file.
+
+  * debian/control:
+    - Revert "d/control: Depend on tzdata-legacy". chronyd is now able to read
+    the NIST/IERS leap-seconds.list file so we don't need to rely on the
+    right/UTC timezone to get the TAI-UTC offsets. This renders the dependency
+    on tzdata-legacy unnecessary.
+
+  * debian/tests/control:
+    - Revert "d/t/control: Let upstream-simulation-test-suite depend on
+    tzdata-legacy".
+
+ -- Vincent Blut <vincent.debian@free.fr>  Tue, 30 Jul 2024 15:01:19 +0200
+
+chrony (4.5-3) unstable; urgency=medium
+
+  * debian/upstream-simulation-test-suite:
+    - Update clknetsim version (Closes: #1073861)
+
+  * debian/usr.sbin.chronyd:
+    - Don't be too strict on allowed socket paths (LP: #2068526)
+
+ -- Vincent Blut <vincent.debian@free.fr>  Thu, 20 Jun 2024 00:41:37 +0200
+
+chrony (4.5-2) unstable; urgency=medium
+
+  * debian/copyright:
+    - Update copyright year for debian/*.
+
+  * debian/control:
+    - Build depend on pkgconf instead of pkg-config.
+    - Bump Standards-Version to 4.7.0 (no changes needed).
+
+  * debian/rules:
+    - Disable seccomp on loong64 until libseccomp in Debian supports it.
+
+  * debian/tests/upstream-simulation-test-suite:
+    - Build clknetsim with extra CFLAGS on armel and armhf architectures as it
+    needs to use the same time_t as the chronyd binary.
+    - Update clknetsim version.
+    - Prevent connection timeout on slow architectures.
+    - Remove unused environment variable.
+
+  [ Bryce Harrington ]
+  * debian/usr.sbin.chronyd:
+    - Fix failure to start timemaster due to lack of rw permissions on chrony
+    socket. (LP: #2032805)
+    - Allow the default UNIX domain socket address to be used by the
+    reflock_sock service in the AppArmor configuration.
+
+ -- Vincent Blut <vincent.debian@free.fr>  Thu, 25 Apr 2024 15:52:18 +0200
+
+chrony (4.5-1) unstable; urgency=medium
+
+  * Import upstream version 4.5:
+    - Please see /usr/share/doc/chrony/NEWS.gz for the release notes.
+
+  * Upload to unstable.
+
+  * debian/copyright:
+    - Update copyright attribution.
+
+ -- Vincent Blut <vincent.debian@free.fr>  Tue, 05 Dec 2023 16:35:17 +0100
+
+chrony (4.5~pre1-1) experimental; urgency=medium
+
+  *  Import upstream version 4.5-pre1:
+    - Please see /usr/share/doc/chrony/NEWS.gz for the release notes.
+
+  * debian/tests/upstream-simulation-test-suite:
+    - Update clknetsim version.
+    - Drop unneeded symlink creation.
+
+ -- Vincent Blut <vincent.debian@free.fr>  Wed, 22 Nov 2023 22:20:11 +0100
+
+chrony (4.4-3) unstable; urgency=medium
+
+  * Rely solely on dh_installsystemd to install the systemd units in the
+    correct location. (Closes: #1054222)
+
+ -- Vincent Blut <vincent.debian@free.fr>  Thu, 19 Oct 2023 23:47:52 +0200
+
+chrony (4.4-2) unstable; urgency=medium
+
+  * debian/control:
+    - Add version constraint on adduser. (Closes: #1051822)
+
+  * debian/.gitlab-ci.yml:
+    - Run CI on unstable.
+
+ -- Vincent Blut <vincent.debian@free.fr>  Thu, 14 Sep 2023 20:28:27 +0200
+
 chrony (4.4-1) unstable; urgency=medium
 
   * Import upstream version 4.4:

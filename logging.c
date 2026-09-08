@@ -145,6 +145,7 @@ void LOG_Message(LOG_Severity severity,
   struct tm *tm;
 
   assert(initialised);
+  severity = CLAMP(LOGS_DEBUG, severity, LOGS_FATAL);
 
   if (!system_log && file_log && severity >= log_min_severity) {
     /* Don't clutter up syslog with timestamps and internal debugging info */
@@ -155,8 +156,13 @@ void LOG_Message(LOG_Severity severity,
       fprintf(file_log, "%s ", buf);
     }
 #if DEBUG > 0
-    if (log_min_severity <= LOGS_DEBUG)
-      fprintf(file_log, "%s%s:%d:(%s) ", debug_prefix, filename, line_number, function_name);
+    if (log_min_severity <= LOGS_DEBUG) {
+      /* Log severity to character mapping (debug, info, warn, err, fatal) */
+      const char severity_chars[LOGS_FATAL - LOGS_DEBUG + 1] = {'D', 'I', 'W', 'E', 'F'};
+
+      fprintf(file_log, "%c:%s%s:%d:(%s) ", severity_chars[severity - LOGS_DEBUG],
+              debug_prefix, filename, line_number, function_name);
+    }
 #endif
   }
 
@@ -179,7 +185,7 @@ void LOG_Message(LOG_Severity severity,
       /* Send the message also to the foreground process if it is
          still running, or stderr if it is still open */
       if (parent_fd > 0) {
-        if (write(parent_fd, buf, strlen(buf) + 1) < 0)
+        if (!LOG_NotifyParent(buf))
           ; /* Not much we can do here */
       } else if (system_log && parent_fd == 0) {
         system_log = 0;
@@ -281,6 +287,17 @@ LOG_SetParentFd(int fd)
   parent_fd = fd;
   if (file_log == stderr)
     file_log = NULL;
+}
+
+/* ================================================== */
+
+int
+LOG_NotifyParent(const char *message)
+{
+  if (parent_fd <= 0)
+    return 1;
+
+  return write(parent_fd, message, strlen(message) + 1) > 0;
 }
 
 /* ================================================== */

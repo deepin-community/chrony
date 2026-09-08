@@ -12,7 +12,7 @@ a time service to other computers in the network.
 It is designed to perform well in a wide range of conditions, including
 intermittent network connections, heavily congested networks, changing
 temperatures (ordinary computer clocks are sensitive to temperature),
-and systems that do not run continuosly, or run on a virtual machine.
+and systems that do not run continuously, or run on a virtual machine.
 
 Typical accuracy between two machines synchronised over the Internet is
 within a few milliseconds; on a LAN, accuracy is typically in tens of
@@ -75,6 +75,7 @@ Lonnie Abelbeck <lonnie@abelbeck.com>
 Benny Lyne Amorsen <benny@amorsen.dk>
 Andrew Bishop <amb@gedanken.demon.co.uk>
 Vincent Blut <vincent.debian@free.fr>
+Luca Boccassi <bluca@debian.org>
 Stephan I. Boettcher <stephan@nevis1.columbia.edu>
 David Bohman <debohman@gmail.com>
 Goswin Brederlow <brederlo@informatik.uni-tuebingen.de>
@@ -89,7 +90,9 @@ Christian Ehrhardt <christian.ehrhardt@canonical.com>
 Paul Elliott <pelliott@io.com>
 Robert Fairley <rfairley@redhat.com>
 Stefan R. Filipek <srfilipek@gmail.com>
+Andy Fiddaman <illumos@fiddaman.net>
 Mike Fleetwood <mike@rockover.demon.co.uk>
+Rob Gill <rrobgill@protonmail.com>
 Alexander Gretencord <arutha@gmx.de>
 Andrew Griffiths <agriffit@redhat.com>
 Walter Haidinger <walter.haidinger@gmx.at>
@@ -111,6 +114,7 @@ Paul Menzel <paulepanter@users.sourceforge.net>
 Vladimir Michl <vladimir.michl@seznam.cz>
 Victor Moroz <vim@prv.adlum.ru>
 Kalle Olavi Niemitalo  <tosi@stekt.oulu.fi>
+Patrick Oppenlander <patrick.oppenlander@gmail.com>
 Frank Otto <sandwichmacher@web.de>
 Denny Page <dennypage@me.com>
 Rupesh Patel <rupatel@redhat.com>
@@ -125,6 +129,7 @@ Andreas Steinmetz <ast@domdv.de>
 NAKAMURA Takumi <takumi@ps.sakura.ne.jp>
 Timo Teras <timo.teras@iki.fi>
 Bill Unruh <unruh@physics.ubc.ca>
+Luke Valenta <lvalenta@cloudflare.com>
 Stephen Wadeley <swadeley@redhat.com>
 Bernhard Weiss <lisnablagh@web.de>
 Wolfgang Weisselberg <weissel@netcologne.de>
