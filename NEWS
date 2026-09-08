@@ -1,3 +1,52 @@
+New in version 4.6.1
+====================
+
+Enhancements
+------------
+* Add ntsaeads directive to enable only selected AEAD algorithms for NTS
+
+Workarounds
+-----------
+* Negotiate use of compliant NTS keys with AES-128-GCM-SIV AEAD algorithm
+  (by default the keys are generated differently than in RFC 8915 for
+  compatibility with chrony server and client versions 4.4, 4.5, and 4.6)
+* Switch to compliant NTS keys if first response from server is NTS NAK
+
+New in version 4.6
+==================
+
+Enhancements
+------------
+* Add activate option to local directive to set activation threshold
+* Add ipv4 and ipv6 options to server/pool/peer directive
+* Add kod option to ratelimit directive for server KoD RATE support
+* Add leapseclist directive to read NIST/IERS leap-seconds.list file
+* Add ptpdomain directive to set PTP domain for NTP over PTP
+* Allow disabling pidfile
+* Improve copy server option to accept unsynchronised status instantly
+* Log one selection failure on start
+* Add offset command to modify source offset correction
+* Add timestamp sources to ntpdata report
+
+Bug fixes
+---------
+* Fix crash on sources reload during initstepslew or RTC initialisation
+* Fix source refreshment to not repeat failed name resolving attempts
+
+New in version 4.5
+==================
+
+Enhancements
+------------
+* Add support for AES-GCM-SIV in GnuTLS
+* Add support for corrections from PTP transparent clocks
+* Add support for systemd socket activation
+
+Bug fixes
+---------
+* Fix presend in interleaved mode
+* Fix reloading of modified sources from sourcedir
+
 New in version 4.4
 ==================
 

@@ -42,6 +42,8 @@ typedef struct {
   struct timespec ts;
   double err;
   NTP_Timestamp_Source source;
+  double rx_duration;
+  double net_correction;
 } NTP_Local_Timestamp;
 
 /* This is a private data type used for storing the instance record for
@@ -110,6 +112,8 @@ extern void NCR_ModifyMaxdelayratio(NCR_Instance inst, double new_max_delay_rati
 extern void NCR_ModifyMaxdelaydevratio(NCR_Instance inst, double new_max_delay_dev_ratio);
 
 extern void NCR_ModifyMinstratum(NCR_Instance inst, int new_min_stratum);
+
+extern void NCR_ModifyOffset(NCR_Instance inst, double new_offset);
 
 extern void NCR_ModifyPolltarget(NCR_Instance inst, int new_poll_target);
 

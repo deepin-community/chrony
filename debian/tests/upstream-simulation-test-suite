@@ -7,30 +7,53 @@
 set -e
 
 testdir="$PWD/test/simulation"
-clknetsim_ver=ef2a7a9
+clknetsim_ver=64df92c5
 clknetsim_src=https://github.com/mlichvar/clknetsim/archive/"$clknetsim_ver"/clknetsim-"$clknetsim_ver".tar.gz
 clknetsim_archive=$(basename "$clknetsim_src")
 
 export CLKNETSIM_PATH="$AUTOPKGTEST_TMP"
+export CLKNETSIM_CONNECT_TIMEOUT=100
 
 # Always use the same seed to get deterministic results
 export CLKNETSIM_RANDOM_SEED=24508
 
-DEB_HOST_MULTIARCH=$(dpkg-architecture -qDEB_HOST_MULTIARCH)
+DEB_BUILD_ARCH=$(dpkg-architecture -qDEB_BUILD_ARCH)
 
 # The simulation tests are only supported on Linux.
 dpkg-architecture -ilinux-any || exit 77
 
 prepare_clknetsim() {
-    # This symbolic link is necessary to prevent clknetsim from FTBFS.
-    ln -s /usr/include/"$DEB_HOST_MULTIARCH"/sys/time.h /usr/include/sys/
-
     wget -P "$CLKNETSIM_PATH" "$clknetsim_src" 2>&1 || exit 77
     tar -xvzf "$CLKNETSIM_PATH"/"$clknetsim_archive" \
         -C "$CLKNETSIM_PATH" --strip-components=1 2>&1 || exit 77
 
+    # Prevent simulation test failures introduced by
+    # refclock_phc_open-device-for-writing-with-extpps-option.patch
+    sed -i '
+        1498i\
+    int __open_2(const char *pathname, int oflag) {\
+            return open(pathname, oflag);\
+    }\
+    \
+    int __open64_2(const char *pathname, int oflag) {\
+            return open(pathname, oflag);\
+    }\
+
+        1538i\
+    ssize_t __read_chk(int fd, void *buf, size_t count, size_t buflen) {\
+            return read(fd, buf, count);\
+    }\
+    ' "$CLKNETSIM_PATH/client.c"
+
     if [ ! -x "$CLKNETSIM_PATH/clknetsim" ] && [ ! -e "$CLKNETSIM_PATH/clknetsim.so" ]; then
-        make -C "$CLKNETSIM_PATH" 2>&1
+        case "$DEB_BUILD_ARCH" in
+            armel|armhf)
+                CFLAGS="-D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -D_TIME_BITS=64" make -C "$CLKNETSIM_PATH" 2>&1
+                ;;
+            *)
+                make -C "$CLKNETSIM_PATH" 2>&1
+                ;;
+        esac
     fi
 }
 
